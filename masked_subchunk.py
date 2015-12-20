@@ -44,3 +44,14 @@ class MaskedSubChunk:
                         block_id = self.blocks[block_coords]
                         block_data = self.data[block_coords]
                         yield (block_coords, block_id, block_data)
+
+    def rotate(self, turns=1):
+        """
+        Rotates the blocks in the counter-clockwise direction. (As numpy
+        does it.)
+        """
+        new_blocks = np.array([np.rot90(by, turns) for by in self.blocks])
+        new_data = np.array([np.rot90(dy, turns) for dy in self.data])
+        new_mask = np.array([np.rot90(my, turns) for my in self.mask])
+
+        return MaskedSubChunk(new_blocks, new_data, new_mask)
