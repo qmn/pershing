@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import numpy as np
+import blocks
 
 class MaskedSubChunk:
     """
@@ -45,13 +46,47 @@ class MaskedSubChunk:
                         block_data = self.data[block_coords]
                         yield (block_coords, block_id, block_data)
 
-    def rotate(self, turns=1):
+    def rot90(self, turns=1):
         """
         Rotates the blocks in the counter-clockwise direction. (As numpy
         does it.)
         """
+        # Rotate the individual Y-layer matrices
         new_blocks = np.array([np.rot90(by, turns) for by in self.blocks])
         new_data = np.array([np.rot90(dy, turns) for dy in self.data])
         new_mask = np.array([np.rot90(my, turns) for my in self.mask])
 
+        # Rotate the data (if applicable)
+        for y in xrange(new_data.shape[0]):
+            for z in xrange(new_data.shape[1]):
+                for x in xrange(new_data.shape[2]):
+                    b = new_blocks[y, z, x]
+                    d = new_data[y, z, x]
+                    new_data[y, z, x] = self.data_rot90(b, d, turns)
+
         return MaskedSubChunk(new_blocks, new_data, new_mask)
+
+    def data_rot90(block, data, turns):
+        """
+        Specially rotate this block, which has an orientation that depends on
+        the data value.
+        """
+        blockname = block_names[block]
+
+        # Torches (redstone and normal)
+        torches = ["redstone_torch", "unlit_redstone_torch", "torch"]
+        if blockname in torches:
+            return blocks.Torch.rot90(data, turns)
+
+        # Repeaters
+        repeaters = ["unpowered_repeater", "powered_repeater"]
+        if blockname in repeaters:
+            return blocks.Repeater.rot90(data, turns)
+
+        # Comparators
+        comparators = ["unpowered_comparator", "powered_comparator"]
+        if blockname in comparators:
+            return blocks.Comparator.rot90(data, turns)
+
+        return data
+
