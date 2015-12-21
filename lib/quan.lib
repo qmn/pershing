@@ -1,0 +1,74 @@
+library(quan) {
+  cell(AND) {
+    area: 12
+    pin(A) {
+      direction: input;
+    }
+    pin(Y) {
+      function: "(A*B)";
+      direction: output;
+    }
+    pin(B) {
+      direction: input;
+    }
+  }
+
+  cell(NOT) {
+    area: 4
+    pin(A) {
+      direction: input;
+    }
+    pin(Y) {
+      function: "A'";
+      direction: output;
+    }
+  }
+
+  cell(NAND) {
+    area: 9
+    pin(A) {
+      direction: input;
+    }
+    pin(Y) {
+      function: "(A*B)'";
+      direction: output;
+    }
+    pin(B) {
+      direction: input;
+    }
+  }
+
+  cell(XOR) {
+    area: 18
+    pin(A) {
+      direction: input;
+    }
+    pin(Y) {
+      function: "(A^B)";
+      direction: output;
+    }
+    pin(B) {
+      direction: input;
+    }
+  }
+
+  cell(DFF) {
+    area: 12
+    ff(IQ, IQN) {
+      clocked_on: C;
+      next_state: D;
+    }
+    pin(Q) {
+      function: "IQ";
+      direction: output;
+    }
+    pin(C) {
+      direction: input;
+      clock: true;
+    }
+    pin(D) {
+      direction: input;
+    }
+  }
+
+}

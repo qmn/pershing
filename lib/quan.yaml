@@ -1,0 +1,132 @@
+# Quan's Minecraft Standard Cell Library
+# 20 December 2015
+
+library_name: quan
+
+cells:
+  and_cell:
+    name: AND
+    pins:
+      A:
+        direction: input
+        coordinates: [0, 0, 0]
+      B:
+        direction: input
+        coordinates: [0, 0, 2]
+      Y:
+        direction: output
+        coordinates: [3, 0, 1]
+        function: "(A*B)"
+
+    blocks: [[[0, 1,  0, 0],
+              [0, 1, 76, 0],
+              [0, 1,  0, 0]],
+             [[0, 76,  0, 0],
+              [0, 55,  0, 0],
+              [0, 76,  0, 0]]]
+
+    data:    [[[0, 0, 0, 0],
+               [0, 0, 1, 0],
+               [0, 0, 0, 0]],
+              [[0, 5, 0, 0],
+               [0, 0, 0, 0],
+               [0, 5, 0, 0]]]
+
+  xor_cell:
+    name: XOR
+    pins:
+      A:
+        direction: input
+        coordinates: [0, 0, 0]
+      B:
+        direction: input
+        coordinates: [0, 0, 2]
+      Y:
+        direction: output
+        coordinates: [5, 0, 1]
+        function: "(A^B)"
+
+    blocks: [[[0,  1, 76, 55,  1, 76],
+              [0,  1,  1, 76,  0,  0],
+              [0,  1, 76, 55,  1, 76]],
+             [[0, 76,  0,  0, 55,  0],
+              [0, 55, 55,  0,  0,  0],
+              [0, 76,  0,  0, 55,  0]]]
+
+    data:   [[[0,  0,  1,  0,  0,  1],
+              [0,  0,  0,  1,  0,  0],
+              [0,  0,  1,  0,  0,  1]],
+             [[0,  5,  1,  0,  0,  0],
+              [0,  0,  0,  0,  0,  0],
+              [0,  5,  1,  0,  0,  0]]]
+
+  nand_cell:
+    name: NAND
+    pins:
+      A:
+        direction: input
+        coordinates: [0, 0, 0]
+      B:
+        direction: input
+        coordinates: [0, 0, 2]
+      Y:
+        direction: output
+        coordinates: [2, 0, 1]
+        function: "(A*B)'"
+
+    blocks: [[[0,  1,  0],
+              [0,  1,  0],
+              [0,  1,  0]],
+             [[0, 76,  0],
+              [0, 55,  0],
+              [0, 76,  0]]]
+
+    data:   [[[0,  0,  0],
+              [0,  0,  0],
+              [0,  0,  0]],
+             [[0,  5 , 0],
+              [0,  0,  0],
+              [0,  5,  0]]]
+
+  not_cell:
+    name: NOT
+    pins:
+      A:
+        direction: input
+        coordinates: [0, 0, 0]
+      Y:
+        direction: output
+        coordinates: [3, 0, 0]
+        function: "A'"
+
+    layout: [[[0, 1, 76, 0]]]
+
+    data:   [[[0, 0,  1, 0]]]
+
+  dff_cell:
+    name: DFF
+    pins:
+      C:
+        direction: input
+        coordinates: [0, 0, 0]
+        clock: true
+      D:
+        direction: input
+        coordinates: [0, 0, 3]
+      Q:
+        direction: output
+        coordinates: [3, 0, 3]
+        function: "IQ"
+      ff:
+        noninverting: "IQ"
+        inverting: "IQN"
+        clocked_on: "C"
+        next_state: "D"
+
+    layout: [[[55,  1, 76, 0],
+              [ 0, 93, 94, 0],
+              [ 0, 93, 93, 0]]]
+
+    data:   [[[ 0,  0,  1, 0],
+              [ 0,  2,  2, 0],
+              [ 0,  1,  1, 0]]]
