@@ -224,20 +224,21 @@ class Torch:
     UP = 5
     rotations = [NORTH, WEST, SOUTH, EAST]
 
-    def rot90(self, data, turns=1):
+    @staticmethod
+    def rot90(data, turns=1):
         """
         Given the current data, deterime the new data value based on the
         number of rotations given by turns.
         """
-        if data == self.UP:
-            return self.UP
+        if data == Torch.UP:
+            return Torch.UP
 
-        if data not in self.rotations:
+        if data not in Torch.rotations:
             raise ValueError("Torch data ({}) is not valid".format(data))
 
-        rot_index = self.rotations.index(data)
-        new_rot = (rot_index + turns) % len(self.rotations)
-        return self.rotations[new_rot]
+        rot_index = Torch.rotations.index(data)
+        new_rot = (rot_index + turns) % len(Torch.rotations)
+        return Torch.rotations[new_rot]
 
 class Repeater:
     NORTH = 0
@@ -246,7 +247,8 @@ class Repeater:
     WEST = 3
     rotations = [NORTH, WEST, SOUTH, EAST]
 
-    def rot90(self, data, turns=1):
+    @staticmethod
+    def rot90(data, turns=1):
         """
         Given the current data, deterime the new data value based on the
         number of rotations given by turns.
@@ -254,12 +256,12 @@ class Repeater:
         rot_bits = data & 0x3
         delay_bits = data & 0xc
 
-        if rot_bits not in self.rotations:
+        if rot_bits not in Repeater.rotations:
             raise ValueError("Repeater data ({}) is not valid".format(data))
 
-        rot_index = self.rotations.index(rot_bits)
-        new_rot = (rot_index + turns) % len(self.rotations)
-        new_rot_bits = self.rotations[new_rot] & 0x3
+        rot_index = Repeater.rotations.index(rot_bits)
+        new_rot = (rot_index + turns) % len(Repeater.rotations)
+        new_rot_bits = Repeater.rotations[new_rot] & 0x3
         return (delay_bits | rot_bits)
 
 class Comparator:
@@ -269,7 +271,8 @@ class Comparator:
     WEST = 3
     rotations = [NORTH, WEST, SOUTH, EAST]
 
-    def rot90(self, data, turns=1):
+    @staticmethod
+    def rot90(data, turns=1):
         """
         Given the current data, deterime the new data value based on the
         number of rotations given by turns.
@@ -277,10 +280,10 @@ class Comparator:
         rot_bits = data & 0x3
         other_bits = data & 0xc
 
-        if rot_bits not in self.rotations:
+        if rot_bits not in Comparator.rotations:
             raise ValueError("Repeater data ({}) is not valid".format(data))
 
-        rot_index = self.rotations.index(rot_bits)
-        new_rot = (rot_index + turns) % len(self.rotations)
-        new_rot_bits = self.rotations[new_rot] & 0x3
+        rot_index = Comparator.rotations.index(rot_bits)
+        new_rot = (rot_index + turns) % len(Comparator.rotations)
+        new_rot_bits = Comparator.rotations[new_rot] & 0x3
         return (other_bits | rot_bits)

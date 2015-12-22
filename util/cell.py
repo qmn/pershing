@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import numpy as np
 
-import blocks
+from blocks import block_names
 from masked_subchunk import MaskedSubChunk
 
 class Cell(MaskedSubChunk):
@@ -15,7 +15,7 @@ class Cell(MaskedSubChunk):
     strings corresponding to port input names.
     """
     def __init__(self, blocks, data, mask, name, ports):
-        super().__init__(blocks, data, mask)
+        super(Cell, self).__init__(blocks, data, mask)
 
         self.name = name
 
@@ -34,9 +34,28 @@ class Cell(MaskedSubChunk):
         # Rotate the ports
         new_ports = np.array([np.rot90(py, turns) for py in self.ports])
 
-        new_msc = super().rot90(turns)
+        new_msc = super(Cell, self).rot90(turns)
         new_blocks = new_msc.blocks
         new_data = new_msc.data
         new_mask = new_msc.mask
 
-        return Cell(new_blocks, new_dat, new_mask, self.name, new_ports, self.port_dict)
+        return Cell(new_blocks, new_data, new_mask, self.name, new_ports)
+
+def from_lib(name, cell):
+    blocks = np.asarray(cell["blocks"], dtype=np.int8)
+    data = np.asarray(cell["data"], dtype=np.int8)
+    mask = np.full_like(blocks, True, dtype=np.bool)
+
+    # build ports
+    try:
+        ports = np.full_like(blocks, "", dtype=object)
+        for pin, d in cell["pins"].iteritems():
+            y, z, x = d["coordinates"]
+            ports[y, z, x] = pin
+    except IndexError:
+        print("Cell name:", name)
+        print("Cell data:", cell)
+        print("Faulty coordinates:", d["coordinates"])
+        raise
+
+    return Cell(blocks, data, mask, name, ports)

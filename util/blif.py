@@ -9,6 +9,23 @@ class BLIF:
         self.cells = cells      # list of cells of {name: "", pins: ["", ...]}
         self.names = names      # list of names of {inputs: ["", ...], output: "", cover: ["", ]}
 
+    def extract_subcircuit_nets(self):
+        nets = set()
+
+        # nets |= set(self.inputs)
+        # nets |= set(self.outputs)
+        # nets |= set(self.clocks)
+
+        for cell in self.cells:
+            for pin, net in cell["pins"].iteritems():
+                nets.add(net)
+
+        # for name in self.names:
+        #     nets |= set(name["inputs"])
+        #     nets |= set(name["outputs"])
+
+        return nets
+
 def get_next_whole_line(f):
     """
     get_next_whole_line reads in the full line, including any backslashes

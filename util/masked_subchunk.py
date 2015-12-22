@@ -3,7 +3,7 @@ from __future__ import print_function
 import numpy as np
 import blocks
 
-class MaskedSubChunk:
+class MaskedSubChunk(object):
     """
     A MaskedSubChunk stores blocks and their associated data values, but
     only for certain locations (the mask). There must be three dimensions
@@ -66,12 +66,12 @@ class MaskedSubChunk:
 
         return MaskedSubChunk(new_blocks, new_data, new_mask)
 
-    def data_rot90(block, data, turns):
+    def data_rot90(self, block, data, turns):
         """
         Specially rotate this block, which has an orientation that depends on
         the data value.
         """
-        blockname = block_names[block]
+        blockname = blocks.block_names[block]
 
         # Torches (redstone and normal)
         torches = ["redstone_torch", "unlit_redstone_torch", "torch"]
@@ -89,4 +89,3 @@ class MaskedSubChunk:
             return blocks.Comparator.rot90(data, turns)
 
         return data
-

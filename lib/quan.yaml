@@ -4,18 +4,17 @@
 library_name: quan
 
 cells:
-  and_cell:
-    name: AND
+  AND:
     pins:
       A:
         direction: input
         coordinates: [0, 0, 0]
       B:
         direction: input
-        coordinates: [0, 0, 2]
+        coordinates: [0, 2, 0]
       Y:
         direction: output
-        coordinates: [3, 0, 1]
+        coordinates: [0, 1, 3]
         function: "(A*B)"
 
     blocks: [[[0, 1,  0, 0],
@@ -32,18 +31,17 @@ cells:
                [0, 0, 0, 0],
                [0, 5, 0, 0]]]
 
-  xor_cell:
-    name: XOR
+  XOR:
     pins:
       A:
         direction: input
         coordinates: [0, 0, 0]
       B:
         direction: input
-        coordinates: [0, 0, 2]
+        coordinates: [0, 2, 0]
       Y:
         direction: output
-        coordinates: [5, 0, 1]
+        coordinates: [0, 1, 5]
         function: "(A^B)"
 
     blocks: [[[0,  1, 76, 55,  1, 76],
@@ -60,18 +58,17 @@ cells:
               [0,  0,  0,  0,  0,  0],
               [0,  5,  1,  0,  0,  0]]]
 
-  nand_cell:
-    name: NAND
+  NAND:
     pins:
       A:
         direction: input
         coordinates: [0, 0, 0]
       B:
         direction: input
-        coordinates: [0, 0, 2]
+        coordinates: [0, 2, 0]
       Y:
         direction: output
-        coordinates: [2, 0, 1]
+        coordinates: [0, 1, 2]
         function: "(A*B)'"
 
     blocks: [[[0,  1,  0],
@@ -88,23 +85,21 @@ cells:
               [0,  0,  0],
               [0,  5,  0]]]
 
-  not_cell:
-    name: NOT
+  NOT:
     pins:
       A:
         direction: input
         coordinates: [0, 0, 0]
       Y:
         direction: output
-        coordinates: [3, 0, 0]
+        coordinates: [0, 0, 3]
         function: "A'"
 
-    layout: [[[0, 1, 76, 0]]]
+    blocks: [[[0, 1, 76, 0]]]
 
     data:   [[[0, 0,  1, 0]]]
 
-  dff_cell:
-    name: DFF
+  DFF:
     pins:
       C:
         direction: input
@@ -112,18 +107,19 @@ cells:
         clock: true
       D:
         direction: input
-        coordinates: [0, 0, 3]
+        coordinates: [0, 2, 0]
       Q:
         direction: output
-        coordinates: [3, 0, 3]
+        coordinates: [0, 2, 3]
         function: "IQ"
-      ff:
-        noninverting: "IQ"
-        inverting: "IQN"
-        clocked_on: "C"
-        next_state: "D"
 
-    layout: [[[55,  1, 76, 0],
+    ff:
+      noninverting: "IQ"
+      inverting: "IQN"
+      clocked_on: "C"
+      next_state: "D"
+
+    blocks: [[[55,  1, 76, 0],
               [ 0, 93, 94, 0],
               [ 0, 93, 93, 0]]]
 
