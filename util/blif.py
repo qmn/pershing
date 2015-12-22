@@ -1,3 +1,4 @@
+
 from __future__ import print_function
 
 class BLIF:
@@ -22,46 +23,10 @@ class BLIF:
 
         # for name in self.names:
         #     nets |= set(name["inputs"])
-        #     nets |= set(name["outputs"])
+        #     nets |= set(name["output"])
 
         return nets
 
-def get_next_whole_line(f):
-    """
-    get_next_whole_line reads in the full line, including any backslashes
-    to indicate a continuation of the previous line.
-    """
-    line = ""
-
-    # Skip blank lines and comment lines
-    while True:
-        line = f.readline()
-        if line == "":
-            return None
-
-        line = line.strip()
-
-        # Remove comments
-        if "#" in line:
-            comment_start = line.index("#")
-            line = line[:comment_start]
-
-        if line == "":
-            continue
-
-        break
-
-    # Fully build the line, ignoring comments
-    while "#" not in line[:-1] and line[-1] == "\\":
-        line = line[:-1] + " " + f.readline().strip()
-
-    # Remove comments
-    if "#" in line:
-        comment_start = line.index("#")
-        line = line[:comment_start]
-
-    return line
-    
 
 def load(f):
     """
@@ -74,6 +39,42 @@ def load(f):
     cells = []
     names = []
 
+    def get_next_whole_line():
+        """
+        get_next_whole_line reads in the full line, including any backslashes
+        to indicate a continuation of the previous line.
+        """
+        line = ""
+
+        # Skip blank lines and comment lines
+        while True:
+            line = f.readline()
+            if line == "":
+                return None
+
+            line = line.strip()
+
+            # Remove comments
+            if "#" in line:
+                comment_start = line.index("#")
+                line = line[:comment_start]
+
+            if line == "":
+                continue
+
+            break
+
+        # Fully build the line, ignoring comments
+        while "#" not in line[:-1] and line[-1] == "\\":
+            line = line[:-1] + " " + f.readline().strip()
+
+        # Remove comments
+        if "#" in line:
+            comment_start = line.index("#")
+            line = line[:comment_start]
+
+        return line
+
     line = "\n"
     reread = False
     while True:
@@ -82,7 +83,7 @@ def load(f):
             reread = False
             # keep previous line
         else:
-            line = get_next_whole_line(f)
+            line = get_next_whole_line()
             if line is None:
                 break
 
@@ -111,7 +112,7 @@ def load(f):
 
             # Read in the single-output-cover lines
             while not new_line_seen:
-                line = get_next_whole_line(f)
+                line = get_next_whole_line()
                 if line is None:
                     break
 
