@@ -3,8 +3,10 @@
 from __future__ import print_function
 
 import numpy as np
+
 from util import blif, cell, cell_library
 from placer import placer
+from vis import png
 
 if __name__ == "__main__":
     with open("lib/quan.yaml") as f:
@@ -17,10 +19,15 @@ if __name__ == "__main__":
     cells = placer.pregenerate_cells(blif, cell_library)
     placements, dimensions = placer.initial_placement(blif, cells)
 
-    estimated_net_lengths = placer.estimate_wire_lengths(blif, cells, placements)
-    wire_length_penalty = sum(estimated_net_lengths.values())
+    score = placer.score(blif, cells, placements, dimensions)
 
-    occupied = placer.compute_occupied_locations(blif, cells, placements, dimensions)
-    overlap_penalty = placer.compute_overlap_penalty(occupied)
+    print("Initial Placement Penalty:", score)
 
-    print("Initial Placement Penalty:", wire_length_penalty + overlap_penalty)
+    new_placements = placer.generate(placements)
+    score2 = placer.score(blif, cells, new_placements, dimensions)
+
+    print("First iteration penalty:", score2)
+
+    layout = placer.create_layout(dimensions, placements, cells)
+    shrunk_layout = placer.shrink_layout(layout)
+    png.layout_to_png(shrunk_layout)
