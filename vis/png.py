@@ -8,13 +8,16 @@ def blockid2texture(blockid):
     block_name = blocks.block_names[blockid]
     return lut[block_name]
 
-def layout_to_png(layout):
+def layout_to_png(layout, filename_base="layer", layers=None):
     image_width = 16 * layout.shape[2]
     image_height = 16 * layout.shape[1]
 
     prev_img = None
 
-    for y in xrange(layout.shape[0]):
+    if layers is None:
+        layers = xrange(1, layout.shape[0] - 1)
+
+    for y in layers:
         img = Image.new("RGBA", (image_width, image_height))
         for z in xrange(layout.shape[1]):
             for x in xrange(layout.shape[2]):
@@ -27,7 +30,7 @@ def layout_to_png(layout):
             prev_img.paste(img, mask=img)
             img = prev_img.copy()
 
-        img.save("layer{}.png".format(y))
+        img.save("{}_{}.png".format(filename_base, y))
         print("Wrote layer {}".format(y))
         prev_img = img
 

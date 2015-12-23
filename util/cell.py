@@ -46,11 +46,21 @@ def from_lib(name, cell):
     data = np.asarray(cell["data"], dtype=np.int8)
     mask = np.full_like(blocks, True, dtype=np.bool)
 
+    pad_out = (1,)
+
+    # pad the cell for placement purposes
+    blocks = np.pad(blocks, pad_out, "constant")
+    data = np.pad(data, pad_out, "constant")
+    mask = np.pad(mask, pad_out, "constant")
+
     # build ports
     try:
         ports = np.full_like(blocks, "", dtype=object)
         for pin, d in cell["pins"].iteritems():
             y, z, x = d["coordinates"]
+            y += pad_out[0]
+            z += pad_out[0]
+            x += pad_out[0]
             ports[y, z, x] = pin
     except IndexError:
         print("Cell name:", name)

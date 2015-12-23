@@ -15,19 +15,21 @@ if __name__ == "__main__":
     with open("counter.blif") as f:
         blif = blif.load(f)
 
-    dimensions = (10, 10, 10)
+    # dimensions = (10, 10, 10)
     cells = placer.pregenerate_cells(blif, cell_library)
     placements, dimensions = placer.initial_placement(blif, cells)
+
+    dimensions = (2, 50, 50)
 
     score = placer.score(blif, cells, placements, dimensions)
 
     print("Initial Placement Penalty:", score)
 
-    new_placements = placer.generate(placements)
-    score2 = placer.score(blif, cells, new_placements, dimensions)
+    T_0 = 250
+    new_placements = placer.simulated_annealing_placement(blif, cells, placements, dimensions, T_0)
 
-    print("First iteration penalty:", score2)
+    print(new_placements)
 
-    layout = placer.create_layout(dimensions, placements, cells)
-    shrunk_layout = placer.shrink_layout(layout)
+    grid = placer.create_layout(dimensions, new_placements, cells)
+    shrunk_layout = placer.grid_to_layout(grid)
     png.layout_to_png(shrunk_layout)
