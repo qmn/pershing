@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import sys
 import random
 import numpy as np
 
@@ -342,8 +343,7 @@ def simulated_annealing_placement(blif, cell_library, initial_placements, dimens
 
     try:
         while iteration < iterations:
-            print("Iteration", iteration)
-            iteration += 1
+            prev_width = 0
             method = "displace"
             for generation in xrange(generations):
                 # print("  Generation", generation)
@@ -365,15 +365,24 @@ def simulated_annealing_placement(blif, cell_library, initial_placements, dimens
                         method = "reorient"
 
             T = update(T)
-
-            print("  Score:", taken_score)
             prev_scores.append(taken_score)
+
+            # Print iteration and score
+            sys.stdout.write("\b" * prev_width)
+            msg = "Iteration: {}  Score: {}\r".format(iteration, taken_score)
+            sys.stdout.write(msg)
+            sys.stdout.flush()
+            prev_width = len(msg)
 
             # if last_consecutive(prev_scores, 20):
             #     break
 
+            iteration += 1
+
     except KeyboardInterrupt:
         pass
+
+    print("\nPlacement complete")
 
     return best_placements
 
@@ -398,6 +407,43 @@ def create_layout(dimensions, placements, pregenerated_cells):
                     grid[(yy + y, zz + z, xx + x)] = blockid
 
     return grid
+
+def shrink(placements, cell_library):
+    """
+    Returns a copy of the placements with the smallest bounding box,
+    and the dimensions of such.
+    """
+    ys = []
+    zs = []
+    xs = []
+
+    placements = deepcopy(placements)
+
+    for placement in placements:
+        rotation = placement["turns"]
+        cell_name = placement["name"]
+        cell = cell_library[cell_name][rotation]
+
+        y, z, x = placement["placement"]
+        h, w, l = cell.blocks.shape
+
+        ys += [y, y+h]
+        zs += [z, z+w]
+        xs += [x, x+l]
+
+    min_y, max_y = min(ys), max(ys)
+    min_z, max_z = min(zs), max(zs)
+    min_x, max_x = min(xs), max(xs)
+
+    dy = max_y - min_y + 1
+    dz = max_z - min_z + 1
+    dx = max_x - min_x + 1
+
+    for placement in placements:
+        y, z, x = placement["placement"]
+        placement["placement"] = [y - min_y, z - min_z, x - min_x]
+
+    return placements, [dy, dz, dx]
 
 def grid_to_layout(grid):
     yy = [c[0] for c in grid.iterkeys()]
