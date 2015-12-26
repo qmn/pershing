@@ -50,7 +50,8 @@ Doing Placement...
 ------------------""")
 
         T_0 = 250
-        new_placements = placer.simulated_annealing_placement(blif, cells, placements, dimensions, T_0)
+        iterations = 2000
+        new_placements = placer.simulated_annealing_placement(blif, cells, placements, dimensions, T_0, iterations)
 
         print(new_placements)
         with open("placements.json", "w") as f:
@@ -58,9 +59,9 @@ Doing Placement...
             f.write("\n")
             json.dump(dimensions, f)
 
-        grid = placer.create_layout(dimensions, new_placements, cells)
-        shrunk_layout = placer.grid_to_layout(grid)
-        png.layout_to_png(shrunk_layout)
+        placements, dimensions = placer.shrink(placements, cells)
+        layout = placer.placement_to_layout(dimensions, placements, cells)
+        png.layout_to_png(layout)
 
         placements = new_placements
 
@@ -71,7 +72,6 @@ Doing Routing...
 ----------------""")
 
     placements, dimensions = placer.shrink(placements, cells)
-    grid = placer.create_layout(dimensions, placements, cells)
-    shrunk_layout = placer.grid_to_layout(grid)
+    layout = placer.placement_to_layout(dimensions, placements, cells)
     net_segments = router.create_net_segments(blif, cells, placements)
-    png.nets_to_png(shrunk_layout, net_segments)
+    png.nets_to_png(layout, net_segments)

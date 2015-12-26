@@ -372,7 +372,7 @@ def simulated_annealing_placement(blif, cell_library, initial_placements, dimens
             msg = "Iteration: {}  Score: {}\r".format(iteration, taken_score)
             sys.stdout.write(msg)
             sys.stdout.flush()
-            prev_width = len(msg)
+            prev_width = len(msg) + 1
 
             # if last_consecutive(prev_scores, 20):
             #     break
@@ -386,11 +386,11 @@ def simulated_annealing_placement(blif, cell_library, initial_placements, dimens
 
     return best_placements
 
-def create_layout(dimensions, placements, pregenerated_cells):
+def placement_to_layout(dimensions, placements, pregenerated_cells):
     """
     Returns a (y, z, x) -> blockid dict.
     """
-    grid = {}
+    layout = np.zeros(dimensions, dtype=np.int8)
 
     for placement in placements:
         # Do the cell lookup
@@ -398,15 +398,13 @@ def create_layout(dimensions, placements, pregenerated_cells):
         cell_name = placement["name"]
         cell = pregenerated_cells[cell_name][rotation]
 
-        yy, zz, xx = placement["placement"]
+        y, z, x = placement["placement"]
+        height, width, length = cell.blocks.shape
 
-        for y in xrange(cell.blocks.shape[0]):
-            for z in xrange(cell.blocks.shape[1]):
-                for x in xrange(cell.blocks.shape[2]):
-                    blockid = cell.blocks[y, z, x]
-                    grid[(yy + y, zz + z, xx + x)] = blockid
+        # Paste cell.blocks into the layout
+        layout[y:y+height, z:z+width, x:x+length] = cell.blocks
 
-    return grid
+    return layout
 
 def shrink(placements, cell_library):
     """
@@ -445,55 +443,3 @@ def shrink(placements, cell_library):
 
     return placements, [dy, dz, dx]
 
-def grid_to_layout(grid):
-    yy = [c[0] for c in grid.iterkeys()]
-    zz = [c[1] for c in grid.iterkeys()]
-    xx = [c[2] for c in grid.iterkeys()]
-
-    min_y, max_y = min(yy), max(yy)
-    min_z, max_z = min(zz), max(zz)
-    min_x, max_x = min(xx), max(xx)
-
-    dy = max_y - min_y + 1
-    dz = max_z - min_z + 1
-    dx = max_x - min_x + 1
-
-    shrunk_layout = np.zeros((dy, dz, dx), dtype=np.int8)
-
-    for (y, z, x), blockid in grid.iteritems():
-        shrunk_layout[y-min_y, z-min_z, x-min_x] = blockid
-
-    return shrunk_layout
-
-def shrink_layout(layout):
-    """
-    Deterimines the smallest 3D array that fits the layout and
-    creates a new layout to fit it.
-    """
-    min_y, min_z, min_x = layout.shape
-    max_y, max_z, max_x = [0, 0, 0]
-
-    for y in xrange(layout.shape[0]):
-        for z in xrange(layout.shape[1]):
-            for x in xrange(layout.shape[2]):
-                blockid = layout[y, z, x]
-                if blockid > 0:
-                    min_y = min(min_y, y)
-                    min_z = min(min_z, z)
-                    min_x = min(min_x, x)
-                    max_y = max(max_y, y)
-                    max_z = max(max_z, z)
-                    max_x = max(max_x, x)
-
-    dy = max_y - min_y + 1
-    dz = max_z - min_z + 1
-    dx = max_x - min_x + 1
-
-    shrunk_layout = np.zeros((dy, dz,dx), dtype=np.int8)
-
-    for y in xrange(shrunk_layout.shape[0]):
-        for z in xrange(shrunk_layout.shape[1]):
-            for x in xrange(shrunk_layout.shape[2]):
-                shrunk_layout[y, z, x] = layout[min_y + y, min_z + z, min_x + x]
-
-    return shrunk_layout
