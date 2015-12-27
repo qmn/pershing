@@ -8,12 +8,16 @@ cells:
     pins:
       A:
         direction: input
+        facing: west
         coordinates: [0, 0, 0]
       B:
         direction: input
+        facing: west
         coordinates: [0, 2, 0]
+
       Y:
         direction: output
+        facing: east
         coordinates: [0, 1, 3]
         function: "(A*B)"
 
@@ -35,12 +39,15 @@ cells:
     pins:
       A:
         direction: input
+        facing: west
         coordinates: [0, 0, 0]
       B:
         direction: input
+        facing: west
         coordinates: [0, 2, 0]
       Y:
         direction: output
+        facing: east
         coordinates: [0, 1, 5]
         function: "(A^B)"
 
@@ -62,12 +69,15 @@ cells:
     pins:
       A:
         direction: input
+        facing: west
         coordinates: [0, 0, 0]
       B:
         direction: input
+        facing: west
         coordinates: [0, 2, 0]
       Y:
         direction: output
+        facing: east
         coordinates: [0, 1, 2]
         function: "(A*B)'"
 
@@ -89,9 +99,11 @@ cells:
     pins:
       A:
         direction: input
+        facing: west
         coordinates: [0, 0, 0]
       Y:
         direction: output
+        facing: east
         coordinates: [0, 0, 3]
         function: "A'"
 
@@ -103,13 +115,16 @@ cells:
     pins:
       C:
         direction: input
+        facing: west
         coordinates: [0, 0, 0]
         clock: true
       D:
         direction: input
+        facing: west
         coordinates: [0, 2, 0]
       Q:
         direction: output
+        facing: east
         coordinates: [0, 2, 3]
         function: "IQ"
 
@@ -119,7 +134,7 @@ cells:
       clocked_on: "C"
       next_state: "D"
 
-    blocks: [[[55,  1, 76, 0],
+    blocks: [[[ 0,  1, 76, 0],
               [ 0, 93, 94, 0],
               [ 0, 93, 93, 0]]]
 

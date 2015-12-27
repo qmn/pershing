@@ -27,11 +27,20 @@ class Cell(MaskedSubChunk):
         """
 
         turns = turns % 4
+        facing_arr = ["east", "north", "west", "south"]
 
         # Rotate the ports
         height, width, length = self.blocks.shape
         new_ports = {}
-        for pin, (y, z, x) in self.ports.iteritems():
+        for pin, d in self.ports.iteritems():
+            (y, z, x) = d["coordinates"]
+
+            # Compute new facing
+            facing_i = facing_arr.index(d["facing"])
+            new_facing_i = (facing_i + turns) % 4
+            new_facing = facing_arr[new_facing_i]
+
+            # Compute new coordinates
             ny = y
             if turns == 1:
                 nz = length - 1 - x
@@ -42,7 +51,9 @@ class Cell(MaskedSubChunk):
             elif turns == 3:
                 nz = x
                 nx = width - 1 - z
-            new_ports[pin] = (ny, nz, nx)
+            new_coordinates = (ny, nz, nx)
+
+            new_ports[pin] = {"coordinates": new_coordinates, "facing": new_facing}
 
         new_msc = super(Cell, self).rot90(turns)
         new_blocks = new_msc.blocks
@@ -73,6 +84,8 @@ def from_lib(name, cell, pad=0):
     ports = {}
     for pin, d in cell["pins"].iteritems():
         y, z, x = d["coordinates"]
-        ports[pin] = (y + pad, z + pad, x + pad)
+        coord = (y + pad, z + pad, x + pad)
+        facing = d["facing"]
+        ports[pin] = {"coordinates": coord, "facing": facing}
 
     return Cell(blocks, data, mask, name, ports)

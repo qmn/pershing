@@ -67,7 +67,8 @@ class Router:
 
             yy, zz, xx = placement["placement"]
 
-            for pin, (y, z, x) in cell.ports.iteritems():
+            for pin, d in cell.ports.iteritems():
+                (y, z, x) = d["coordinates"]
                 coord = (y + yy, z + zz, x + xx)
                 net_name = placement["pins"][pin]
                 net_pins[net_name].append(coord)
