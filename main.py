@@ -24,12 +24,14 @@ if __name__ == "__main__":
             dimensions = json.loads(f.readline())
 
     with open("lib/quan.yaml") as f:
-        cell_library = cell_library.load(f)
+        cell_lib = cell_library.load(f)
 
     with open("counter.blif") as f:
         blif = blif.load(f)
 
-    cells = placer.pregenerate_cells(blif, cell_library)
+    pregenerated_cells = cell_library.pregenerate_cells(cell_lib)
+
+    placer = placer.Placer(blif, pregenerated_cells)
 
     # PLACE =============================================================
     if placements is None:
@@ -37,11 +39,11 @@ if __name__ == "__main__":
 Performing Initial Placement...
 -------------------------------""")
 
-        placements, dimensions = placer.initial_placement(blif, cells)
+        placements, dimensions = placer.initial_placement()
 
         dimensions = (2, 50, 50)
 
-        score = placer.score(blif, cells, placements, dimensions)
+        score = placer.score(placements, dimensions)
 
         print("Initial Placement Penalty:", score)
 
@@ -50,8 +52,8 @@ Doing Placement...
 ------------------""")
 
         T_0 = 250
-        iterations = 2000
-        new_placements = placer.simulated_annealing_placement(blif, cells, placements, dimensions, T_0, iterations)
+        iterations = 100
+        new_placements = placer.simulated_annealing_placement(placements, dimensions, T_0, iterations)
 
         print(new_placements)
         with open("placements.json", "w") as f:
@@ -59,8 +61,8 @@ Doing Placement...
             f.write("\n")
             json.dump(dimensions, f)
 
-        placements, dimensions = placer.shrink(placements, cells)
-        layout = placer.placement_to_layout(dimensions, placements, cells)
+        placements, dimensions = placer.shrink(placements)
+        layout = placer.placement_to_layout(dimensions, placements)
         png.layout_to_png(layout)
 
         placements = new_placements
@@ -71,7 +73,16 @@ Doing Placement...
 Doing Routing...
 ----------------""")
 
-    placements, dimensions = placer.shrink(placements, cells)
-    layout = placer.placement_to_layout(dimensions, placements, cells)
-    net_segments = router.create_net_segments(blif, cells, placements)
+    placements, dimensions = placer.shrink(placements)
+    layout = placer.placement_to_layout(dimensions, placements)
+
+    router = router.Router(blif, pregenerated_cells)
+
+    net_segments = router.create_net_segments(placements)
+
+
+    # VISUALIZE =========================================================
+    print("""
+Doing Visualization...
+-------------------""")
     png.nets_to_png(layout, net_segments)
