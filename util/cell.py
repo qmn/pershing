@@ -25,20 +25,36 @@ class Cell(MaskedSubChunk):
         Rotates the cell and its ports in the counter-clockwise direction (As numpy
         does it.)
         """
-        
+
+        turns = turns % 4
+
         # Rotate the ports
         height, width, length = self.blocks.shape
         new_ports = {}
         for pin, (y, z, x) in self.ports.iteritems():
             ny = y
-            nz = length - 1 - x
-            nx = width - 1 - z
+            if turns == 1:
+                nz = length - 1 - x
+                nx = z
+            elif turns == 2:
+                nz = width - z
+                nx = length - x
+            elif turns == 3:
+                nz = x
+                nx = width - 1 - z
             new_ports[pin] = (ny, nz, nx)
 
         new_msc = super(Cell, self).rot90(turns)
         new_blocks = new_msc.blocks
         new_data = new_msc.data
         new_mask = new_msc.mask
+
+        # port_array = np.zeros_like(new_blocks)
+        # for i, (y, z, x) in enumerate(new_ports.itervalues()):
+        #     port_array[y, z, x] = i + 1
+
+        # print(new_blocks)
+        # print(port_array)
 
         return Cell(new_blocks, new_data, new_mask, self.name, new_ports)
 

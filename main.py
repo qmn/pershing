@@ -41,8 +41,6 @@ Performing Initial Placement...
 
         placements, dimensions = placer.initial_placement()
 
-        dimensions = (2, 50, 50)
-
         score = placer.score(placements, dimensions)
 
         print("Initial Placement Penalty:", score)
@@ -52,7 +50,7 @@ Doing Placement...
 ------------------""")
 
         T_0 = 250
-        iterations = 100
+        iterations = 2000
         new_placements = placer.simulated_annealing_placement(placements, dimensions, T_0, iterations)
 
         print(new_placements)
