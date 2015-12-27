@@ -67,14 +67,10 @@ class Router:
 
             yy, zz, xx = placement["placement"]
 
-            for y in xrange(cell.ports.shape[0]):
-                for z in xrange(cell.ports.shape[1]):
-                    for x in xrange(cell.ports.shape[2]):
-                        port_name = cell.ports[y, z, x]
-                        if port_name:
-                            net_name = placement["pins"][port_name]
-                            coord = (y + yy, z + zz, x + xx)
-                            net_pins[net_name].append(coord)
+            for pin, (y, z, x) in cell.ports.iteritems():
+                coord = (y + yy, z + zz, x + xx)
+                net_name = placement["pins"][pin]
+                net_pins[net_name].append(coord)
 
         net_segments = {}
         for net, pin_list in net_pins.iteritems():

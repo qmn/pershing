@@ -21,7 +21,7 @@ def load(f):
 
     return CellLibrary(cells)
 
-def pregenerate_cells(cell_library):
+def pregenerate_cells(cell_library, pad=None):
     """
     Generates each cell and each of its four (yaw) rotations.
 
@@ -31,7 +31,7 @@ def pregenerate_cells(cell_library):
     cells = {}
     for cell_name, cell_data in cell_library.cells.iteritems():
         # Generate first cell
-        cell_rot0 = from_lib(cell_name, cell_data)
+        cell_rot0 = from_lib(cell_name, cell_data, pad)
 
         # Generate all four rotations
         cell_rot1 = cell_rot0.rot90()

@@ -14,7 +14,7 @@ def layout_to_composite(layout, layers=None):
     img = None
     
     if layers is None:
-        layers = xrange(1, layout.shape[0]-1)
+        layers = xrange(layout.shape[0])
 
     for y in layers:
         new_img = layer_to_img(layout, y)

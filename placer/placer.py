@@ -85,7 +85,7 @@ class Placer:
 
         return placements, dimensions
 
-    def estimate_lengths_and_occupieds(self, placements, pad_y=1):
+    def estimate_lengths_and_occupieds(self, placements):
         net_pins = defaultdict(list)
         grid = defaultdict(int)
 
@@ -96,20 +96,20 @@ class Placer:
             cell = self.pregenerated_cells[cell_name][rotation]
 
             yy, zz, xx = placement["placement"]
+            height, width, length = cell.blocks.shape
 
-            for y in xrange(pad_y, cell.ports.shape[0]-pad_y):
-                for z in xrange(cell.ports.shape[1]):
-                    for x in xrange(cell.ports.shape[2]):
-                        coord = (y + yy, z + zz, x + xx)
-
-                        # Add to the list of occupied locations
+            # Add all items in this 3D matrix by the value 1
+            for y in xrange(height):
+                for z in xrange(width):
+                    for x in xrange(length):
+                        coord = (yy + y, zz + z, xx + x)
                         grid[coord] += 1
 
-                        # Add to the list of pins
-                        port_name = cell.ports[y, z, x]
-                        if port_name:
-                            net_name = placement["pins"][port_name]
-                            net_pins[net_name].append(coord)
+            # Add the pins
+            for pin, (y, z, x) in cell.ports.iteritems():
+                coord = (y + yy, z + zz, x + xx)
+                net_name = placement["pins"][pin]
+                net_pins[net_name].append(coord)
 
         net_lengths = {}
 
@@ -125,47 +125,6 @@ class Placer:
 
         return net_lengths, grid
 
-    def estimate_wire_lengths(self, placements):
-        """
-        Given the cells and their placements, determine the estimated wire
-        lengths of all nets used by these cells.
-
-        The estimate is the "half-perimeter of the bounding box of the net."
-        """
-
-        net_pins = defaultdict(list)
-
-        # For each wire, locate its pins according to the placement
-        for blif_cell, placement in zip(self, blif.cells, placements):
-            # Do the cell lookup
-            rotation = placement["turns"]
-            cell_name = placement["name"]
-            cell = self.pregenerated_cells[cell_name][rotation]
-
-            yy, zz, xx = placement["placement"]
-
-            for y in xrange(cell.ports.shape[0]):
-                for z in xrange(cell.ports.shape[1]):
-                    for x in xrange(cell.ports.shape[2]):
-                        port_name = cell.ports[y, z, x]
-                        if port_name:
-                            net_name = placement["pins"][port_name]
-                            coord = (y + yy, z + zz, x + xx)
-                            net_pins[net_name].append(coord)
-
-        net_lengths = {}
-
-        # Figure the point-to-point of these pins' locations
-        for net, pins in net_pins.iteritems():
-            dy = max(c[0] for c in pins) - min(c[0] for c in pins)
-            dz = max(c[1] for c in pins) - min(c[1] for c in pins)
-            dx = max(c[2] for c in pins) - min(c[2] for c in pins)
-
-            net_lengths[net] = dy + dz + dx
-
-        # print(net_lengths)
-
-        return net_lengths
 
     def compute_occupied_locations(self, placements, dimensions):
 

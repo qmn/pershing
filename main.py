@@ -29,7 +29,7 @@ if __name__ == "__main__":
     with open("counter.blif") as f:
         blif = blif.load(f)
 
-    pregenerated_cells = cell_library.pregenerate_cells(cell_lib)
+    pregenerated_cells = cell_library.pregenerate_cells(cell_lib, pad=1)
 
     placer = placer.Placer(blif, pregenerated_cells)
 

@@ -11,18 +11,13 @@ class Cell(MaskedSubChunk):
     logic function.
 
 
-    ports is a 3D matrix that matches the dimensions of blocks which contains
-    strings corresponding to port input names.
+    ports is a dict that maps pin names to the (y, z, x) coordinates in
+    the blocks matrix.
     """
     def __init__(self, blocks, data, mask, name, ports):
         super(Cell, self).__init__(blocks, data, mask)
 
         self.name = name
-
-        ports = np.asarray(ports, dtype=np.str)
-        if self.blocks.shape != ports.shape:
-            raise ValueError("Blocks shape does not match ports shape: {} != {}".format(self.blocks.shape, ports.shape))
-
         self.ports = ports
 
     def rot90(self, turns=1):
@@ -32,7 +27,13 @@ class Cell(MaskedSubChunk):
         """
         
         # Rotate the ports
-        new_ports = np.array([np.rot90(py, turns) for py in self.ports])
+        height, width, length = self.blocks.shape
+        new_ports = {}
+        for pin, (y, z, x) in self.ports.iteritems():
+            ny = y
+            nz = length - 1 - x
+            nx = width - 1 - z
+            new_ports[pin] = (ny, nz, nx)
 
         new_msc = super(Cell, self).rot90(turns)
         new_blocks = new_msc.blocks
@@ -41,31 +42,21 @@ class Cell(MaskedSubChunk):
 
         return Cell(new_blocks, new_data, new_mask, self.name, new_ports)
 
-def from_lib(name, cell):
+def from_lib(name, cell, pad=0):
     blocks = np.asarray(cell["blocks"], dtype=np.int8)
     data = np.asarray(cell["data"], dtype=np.int8)
     mask = np.full_like(blocks, True, dtype=np.bool)
 
-    pad_out = (1,)
-
-    # pad the cell for placement purposes
-    blocks = np.pad(blocks, pad_out, "constant")
-    data = np.pad(data, pad_out, "constant")
-    mask = np.pad(mask, pad_out, "constant")
+    if pad != 0:
+        pad_out = (pad,)
+        blocks = np.pad(blocks, pad_out, "constant")
+        data = np.pad(data, pad_out, "constant")
+        mask = np.pad(mask, pad_out, "constant")
 
     # build ports
-    try:
-        ports = np.full_like(blocks, "", dtype=object)
-        for pin, d in cell["pins"].iteritems():
-            y, z, x = d["coordinates"]
-            y += pad_out[0]
-            z += pad_out[0]
-            x += pad_out[0]
-            ports[y, z, x] = pin
-    except IndexError:
-        print("Cell name:", name)
-        print("Cell data:", cell)
-        print("Faulty coordinates:", d["coordinates"])
-        raise
+    ports = {}
+    for pin, d in cell["pins"].iteritems():
+        y, z, x = d["coordinates"]
+        ports[pin] = (y + pad, z + pad, x + pad)
 
     return Cell(blocks, data, mask, name, ports)
