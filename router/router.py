@@ -1,6 +1,8 @@
 from __future__ import print_function
 
+from copy import deepcopy
 from collections import defaultdict
+import random
 
 import numpy as np
 from scipy.spatial.distance import cityblock
@@ -42,9 +44,6 @@ class Router:
             algorithm.
             """
 
-            def pin_distance(a, b):
-                return cityblock(a, b)
-
             # Create sets for each of the pins
             sets = []
             for pin in net_pins:
@@ -57,8 +56,9 @@ class Router:
                 for pin2 in net_pins:
                     if pin == pin2:
                         continue
-
-                    weights[(pin, pin2)] = pin_distance(pin, pin2)
+                    # Weight each pin distance based on the Manhattan
+                    # distance.
+                    weights[(pin, pin2)] = cityblock(pin, pin2)
 
             def find_set(u):
                 for i, s in enumerate(sets):
@@ -205,7 +205,27 @@ class Router:
                 routings[net_name].append(net)
         return routings
 
-    def score_routing(self, routing, layout, net_pins):
+    def generate_net_matrices(self, routing, net_segments, net_pins, layout_dimensions):
+        """
+        For the nets specified by routing, create:
+        net_wires: a dictionary on net names with a list of blocks with
+            wires connecting the net.
+        net_violations: a dictionary on net names with 3D matrices
+            specifying which blocks to test for violations.
+        """
+        net_wires = defaultdict(list)
+        net_violations = defaultdict(list)
+
+        for net_name, nets in routing.iteritems():
+            pins = net_pins[net_name]
+            for net in nets:
+                w, v = self.net_to_wire_and_violation(net, layout_dimensions, pins)
+                net_wires[net_name].append(w)
+                net_violations[net_name].append(v)
+
+        return net_wires, net_violations
+
+    def score_routing(self, routing, net_segments, layout, net_pins):
         """
         For the given layout, and the routing, produce the score of the
         routing.
@@ -217,35 +237,114 @@ class Router:
 
         layout is the 3D matrix produced by the placer.
         """
-
-        net_wires = defaultdict(list)
-        net_violations = defaultdict(list)
-
-        layout_dimensions = layout.shape
+        alpha = 3
+        beta = 0.1
+        gamma = 1
 
         usage_matrix = np.copy(layout)
 
-        # Construct the usage matrix for each of the nets, and save
-        # some time by pre-adding them to the usage_matrix
-        for net_name, nets in routing.iteritems():
-            vv = []
-            pins = net_pins[net_name]
-            for net in nets:
-                w, v = self.net_to_wire_and_violation(net, layout_dimensions, pins)
-                net_wires[net_name].append(w)
-                net_violations[net_name].append(v)
-                # Add the wire to the usage matrix
-                usage_matrix = np.logical_or(usage_matrix, w)
+        net_wires, net_violations = self.generate_net_matrices(routing, net_segments, net_pins, layout.shape)
+
+        # Add the wires to the usage matrix
+        for net_name, wires in routing.iteritems():
+            for wire in wires:
+                for coord in wire:
+                    usage_matrix[coord] = 1
 
         net_scores = {}
+        net_num_violations = {}
 
         # Score each net segment in the entire net
-        for net_name, violation_matrices in net_violations.iteritems():
+        for net_name in net_segments:
             net_scores[net_name] = []
-            for violation_matrix in violation_matrices:
-                violations = self.compute_net_violations(violation_matrix, usage_matrix)
-                net_scores[net_name].append(violations)
+            net_num_violations[net_name] = []
 
-        print(routing)
-        print(net_scores)
-        return net_scores
+            for i, net in enumerate(net_segments[net_name]):
+                routed_net = routing[net_name][i]
+
+                # Violations
+                violation_matrix = net_violations[net_name][i]
+                violations = self.compute_net_violations(violation_matrix, usage_matrix)
+                net_num_violations[net_name].append(violations)
+
+                # Number of vias and pins
+                vias = 0
+                pins = 2
+                pins_vias = vias - pins
+
+                # Lower length bound
+                lower_length_bound = max(1, cityblock(net[0], net[1]))
+                length_ratio = len(routed_net) / lower_length_bound
+
+                score = (alpha * violations) + (beta * pins_vias) + (gamma * length_ratio)
+
+                net_scores[net_name].append(score)
+
+        # print(routing)
+        # print(net_scores)
+        return net_scores, net_num_violations
+
+    def normalize_net_scores(self, net_scores, norm_margin=0.1):
+        """
+        Normalize scores to [norm_margin, 1-norm_margin].
+        """
+        scores = sum(net_scores.itervalues(), [])
+        min_score, max_score = min(scores), max(scores)
+        norm_range = 1.0 - 2*norm_margin
+        scale = norm_range / (max_score - min_score)
+
+        normalized_scores = {}
+        for net_name, scores in net_scores.iteritems():
+            new_net_scores = [norm_margin + score * scale for score in scores]
+            normalized_scores[net_name] = new_net_scores
+
+        return normalized_scores
+
+    def natural_selection(self, net_scores):
+        """
+        natural_selection() selects which nets and net segments to rip up
+        and replace. It returns a list of (net name, index) tuples, in
+        which the index represents the net to replace.
+        """
+        rip_up = []
+        for net_name, norm_scores in net_scores.iteritems():
+            for i, norm_score in enumerate(norm_scores):
+                x = random.random()
+                if x < norm_score:
+                    rip_up.append((net_name, i))
+
+        return rip_up
+
+    def re_route(self, initial_routing, net_segments, net_pins, placed_layout):
+        """
+        re_route() produces new routings until there are no more net
+        violations that cause the routing to be infeasible.
+        """
+        # Score the initial routing
+        net_scores, net_violations = self.score_routing(initial_routing, net_segments, placed_layout, net_pins)
+        num_violations = sum(sum(net_violations.itervalues(), []))
+        iterations = 0
+
+        routing = deepcopy(initial_routing)
+
+        while num_violations > 0:
+            print("Iteration:", iterations, " Violations:", num_violations)
+
+            # Normalize net scores
+            normalized_scores = self.normalize_net_scores(net_scores)
+
+            # Select nets to rip-up and re-route
+            rip_up = self.natural_selection(normalized_scores)
+
+            print("Re-routing", len(rip_up), "nets")
+
+            # Re-route these nets
+            routing = routing
+
+            # Re-score this net
+            net_scores, net_violations = self.score_routing(routing, net_segments, placed_layout, net_pins)
+            num_violations = sum(sum(net_violations.itervalues(), []))
+            iterations += 1
+
+        return routing
+
