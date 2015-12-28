@@ -11,6 +11,27 @@ class Router:
     def __init__(self, blif, pregenerated_cells):
         self.blif = blif
         self.pregenerated_cells = pregenerated_cells
+
+    def extract_pin_locations(self, placements):
+        net_pins = defaultdict(list)
+
+        # For each wire, locate its pins according to the placement
+        for blif_cell, placement in zip(self.blif.cells, placements):
+            # Do the cell lookup
+            rotation = placement["turns"]
+            cell_name = placement["name"]
+            cell = self.pregenerated_cells[cell_name][rotation]
+
+            yy, zz, xx = placement["placement"]
+
+            for pin, d in cell.ports.iteritems():
+                (y, z, x) = d["coordinates"]
+                facing = d["facing"]
+                coord = (y + yy, z + zz, x + xx)
+                net_name = placement["pins"][pin]
+                net_pins[net_name].append(coord)
+
+        return net_pins
         
     def create_net_segments(self, placements):
 
@@ -76,25 +97,7 @@ class Router:
 
             return (y, z, x)
 
-
-        net_pins = defaultdict(list)
-
-        # For each wire, locate its pins according to the placement
-        for blif_cell, placement in zip(self.blif.cells, placements):
-            # Do the cell lookup
-            rotation = placement["turns"]
-            cell_name = placement["name"]
-            cell = self.pregenerated_cells[cell_name][rotation]
-
-            yy, zz, xx = placement["placement"]
-
-            for pin, d in cell.ports.iteritems():
-                (y, z, x) = d["coordinates"]
-                facing = d["facing"]
-                coord = (y + yy, z + zz, x + xx)
-                coord = extend_pin(coord, facing)
-                net_name = placement["pins"][pin]
-                net_pins[net_name].append(coord)
+        net_pins = self.extract_pin_locations(placements)
 
         net_segments = {}
         for net, pin_list in net_pins.iteritems():
@@ -128,7 +131,7 @@ class Router:
 
         return net
 
-    def net_to_wire_and_violation(self, net, dimensions):
+    def net_to_wire_and_violation(self, net, dimensions, pins):
         """
         Converts a realized net, which is a list of block positions from
         one pin to another, into two matrices:
@@ -145,15 +148,17 @@ class Router:
 
         violation_directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 
-        for y, z, x in net:
+        for coord in net:
+            y, z, x = coord
             # Generate the wire itself
             wire[y, z, x] = redstone
             wire[y - 1, z, x] = stone
 
-            # Generate the violation matrix
-            for vy in [0, -1]:
-                for vz, vx in violation_directions:
-                    violation[y + vy, z + vz, x + vx] = True
+            # Generate the violation matrix, unless it's a pin
+            if coord not in pins:
+                for vy in [0, -1]:
+                    for vz, vx in violation_directions:
+                        violation[y + vy, z + vz, x + vx] = True
 
         # Remove "wire" from the violation matrix so that it doesn't
         # violate itself
@@ -169,7 +174,7 @@ class Router:
         """
         return sum(np.logical_and(violation, occupieds).flat)
 
-    def unify_violations(self, nets, violations, dimensions):
+    def unify_violations(self, nets, violations, dimensions, pins):
         """
         Given the set of wires and violations, produce a unified view of
         the violations to search for.
@@ -188,7 +193,7 @@ class Router:
 
         return v
 
-    def initial_routing(self, net_segments):
+    def initial_routing(self, net_segments, placements):
         """
         For all nets, produce a dumb initial routing.
         """
@@ -200,7 +205,7 @@ class Router:
                 routings[net_name].append(net)
         return routings
 
-    def score_routing(self, routing, layout):
+    def score_routing(self, routing, layout, net_pins):
         """
         For the given layout, and the routing, produce the score of the
         routing.
@@ -214,7 +219,7 @@ class Router:
         """
 
         net_wires = defaultdict(list)
-        net_violations = {}
+        net_violations = defaultdict(list)
 
         layout_dimensions = layout.shape
 
@@ -224,23 +229,23 @@ class Router:
         # some time by pre-adding them to the usage_matrix
         for net_name, nets in routing.iteritems():
             vv = []
-
+            pins = net_pins[net_name]
             for net in nets:
-                w, v = self.net_to_wire_and_violation(net, layout_dimensions)
+                w, v = self.net_to_wire_and_violation(net, layout_dimensions, pins)
                 net_wires[net_name].append(w)
-                vv.append(v)
+                net_violations[net_name].append(v)
                 # Add the wire to the usage matrix
                 usage_matrix = np.logical_or(usage_matrix, w)
 
-            # Assemble the violation matrix for the whole net
-            violation_matrix = self.unify_violations(nets, vv, layout_dimensions)
-            net_violations[net_name] = violation_matrix
-
         net_scores = {}
 
-        for net_name, violation_matrix in net_violations.iteritems():
-            violations = self.compute_net_violations(violation_matrix, usage_matrix)
-            net_scores[net_name] = violations
-            print(net_name, violations)
+        # Score each net segment in the entire net
+        for net_name, violation_matrices in net_violations.iteritems():
+            net_scores[net_name] = []
+            for violation_matrix in violation_matrices:
+                violations = self.compute_net_violations(violation_matrix, usage_matrix)
+                net_scores[net_name].append(violations)
 
+        print(routing)
+        print(net_scores)
         return net_scores
