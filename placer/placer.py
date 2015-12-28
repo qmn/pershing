@@ -142,7 +142,8 @@ class Placer:
             for y in xrange(cell.blocks.shape[0]):
                 for z in xrange(cell.blocks.shape[1]):
                     for x in xrange(cell.blocks.shape[2]):
-                        grid[(yy + y, zz + z, xx + x)] += 1
+                        if cell.blocks[y, z, x] > 0:
+                            grid[(yy + y, zz + z, xx + x)] += 1
 
         # print(grid)
 

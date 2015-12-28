@@ -78,6 +78,22 @@ Doing Routing...
 
     net_segments = router.create_net_segments(placements)
 
+    # for net, segments in net_segments.iteritems():
+    #     print("{}:".format(net))
+    #     for segment in segments:
+    #         print("  " + str(list(segment)))
+    #     print()
+
+    routing = router.initial_routing(net_segments)
+    # print(routing)
+
+    for nets in routing.itervalues():
+        for net in nets:
+            for y, z, x in net:
+                layout[y, z, x] = 55
+                layout[y-1, z, x] = 1
+
+    scores = router.score_routing(routing, layout)
 
     # VISUALIZE =========================================================
     print("""
