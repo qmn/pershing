@@ -35,7 +35,7 @@ class Router:
 
         return net_pins
         
-    def create_net_segments(self, placements):
+    def create_net_segments(self, pin_locations):
 
         def minimum_spanning_tree(net_pins):
             """
@@ -97,10 +97,8 @@ class Router:
 
             return (y, z, x)
 
-        net_pins = self.extract_pin_locations(placements)
-
         net_segments = {}
-        for net, pin_list in net_pins.iteritems():
+        for net, pin_list in pin_locations.iteritems():
             if len(pin_list) < 2:
                 continue
             net_segments[net] = minimum_spanning_tree(pin_list)
@@ -174,79 +172,53 @@ class Router:
         """
         return sum(np.logical_and(violation, occupieds).flat)
 
-    def unify_violations(self, nets, violations, dimensions, pins):
-        """
-        Given the set of wires and violations, produce a unified view of
-        the violations to search for.
-        """
-        v = np.zeros(dimensions, dtype=np.bool)
-
-        # Add together the violation matrices
-        for violation_matrix in violations:
-            v = np.logical_or(v, violation_matrix)
-
-        # Remove the nets from the violation matrix
-        for net in nets:
-            for y, z, x in net:
-                v[y, z, x] = False
-                v[y - 1, z, x] = False
-
-        return v
-
-    def initial_routing(self, net_segments, placements):
+    def initial_routing(self, placements, layout_dimensions):
         """
         For all nets, produce a dumb initial routing.
+
+        The returned routing dictionary is of the structure:
+        { net name:
+            { pins: [(y, z, x) tuples]
+              segments: [
+                { pins: [(ay, az, ax), (by, bz, bx)],
+                  net: [path of redstone],
+                  wire: [path of redstone and blocks],
+                  violation: [violation matrix]
+                }
+              ]
+            }
+        }
         """
-        routings = defaultdict(list)
-        for net_name, segments in net_segments.iteritems():
-            for segment in segments:
-                a, b = segment
+        routings = {}
+
+        pin_locations = self.extract_pin_locations(placements)
+        net_segments = self.create_net_segments(pin_locations)
+
+        for net_name, segment_endpoints in net_segments.iteritems():
+            segments = []
+            for a, b in segment_endpoints:
                 net = self.dumb_route(a, b)
-                routings[net_name].append(net)
+                w, v = self.net_to_wire_and_violation(net, layout_dimensions, [a, b])
+                segment = {"pins": [a, b], "net": net, "wire": w, "violation": v}
+                segments.append(segment)
+
+            net_pins = pin_locations[net_name]
+            routings[net_name] = {"pins": net_pins, "segments": segments}
+
         return routings
-
-    def generate_violation_matrices(self, routing, net_segments, net_pins, layout_dimensions):
-        violations = defaultdict(list)
-        for net_name, nets in routing.iteritems():
-            pins = net_pins[net_name]
-            for net in nets:
-                _, v = self.net_to_wire_and_violation(net, layout_dimensions, pins)
-                violations[net_name].append(v)
-
-        return violations
-
-    def generate_net_matrices(self, routing, net_segments, net_pins, layout_dimensions):
-        """
-        For the nets specified by routing, create:
-        net_wires: a dictionary on net names with a list of blocks with
-            wires connecting the net.
-        net_violations: a dictionary on net names with 3D matrices
-            specifying which blocks to test for violations.
-        """
-        net_wires = defaultdict(list)
-        net_violations = defaultdict(list)
-
-        for net_name, nets in routing.iteritems():
-            pins = net_pins[net_name]
-            for net in nets:
-                w, v = self.net_to_wire_and_violation(net, layout_dimensions, pins)
-                net_wires[net_name].append(w)
-                net_violations[net_name].append(v)
-
-        return net_wires, net_violations
 
     def generate_usage_matrix(self, placed_layout, routing, exclude=[]):
         usage_matrix = np.copy(placed_layout)
-        for net_name, wires in routing.iteritems():
-            for i, wire in enumerate(wires):
+        for net_name, d in routing.iteritems():
+            for i, segment in enumerate(d["segments"]):
                 if (net_name, i) in exclude:
                     continue
-                for coord in wire:
-                    usage_matrix[coord] = 1
+                else:
+                    usage_matrix = np.logical_or(usage_matrix, segment["wire"])
 
         return usage_matrix
 
-    def score_routing(self, routing, net_segments, layout, net_pins, violation_matrices, usage_matrix):
+    def score_routing(self, routing, layout, usage_matrix):
         """
         For the given layout, and the routing, produce the score of the
         routing.
@@ -266,15 +238,15 @@ class Router:
         net_num_violations = {}
 
         # Score each net segment in the entire net
-        for net_name in net_segments:
+        for net_name, d in routing.iteritems():
             net_scores[net_name] = []
             net_num_violations[net_name] = []
 
-            for i, pins in enumerate(net_segments[net_name]):
-                routed_net = routing[net_name][i]
+            for i, segment in enumerate(d["segments"]):
+                routed_net = segment["net"]
 
                 # Violations
-                violation_matrix = violation_matrices[net_name][i]
+                violation_matrix = segment["violation"]
                 violations = self.compute_net_violations(violation_matrix, usage_matrix)
                 net_num_violations[net_name].append(violations)
 
@@ -284,7 +256,7 @@ class Router:
                 pins_vias = vias - num_pins
 
                 # Lower length bound
-                lower_length_bound = max(1, cityblock(pins[0], pins[1]))
+                lower_length_bound = max(1, cityblock(segment["pins"][0], segment["pins"][1]))
                 length_ratio = len(routed_net) / lower_length_bound
 
                 score = (alpha * violations) + (beta * pins_vias) + (gamma * length_ratio)
@@ -326,16 +298,15 @@ class Router:
 
         return rip_up
 
-    def re_route(self, initial_routing, net_segments, net_pins, placed_layout):
+    def re_route(self, initial_routing, placed_layout):
         """
         re_route() produces new routings until there are no more net
         violations that cause the routing to be infeasible.
         """
-        violation_matrices = self.generate_violation_matrices(initial_routing, net_segments, net_pins, placed_layout.shape)
         usage_matrix = self.generate_usage_matrix(placed_layout, initial_routing)
 
         # Score the initial routing
-        net_scores, net_violations = self.score_routing(initial_routing, net_segments, placed_layout, net_pins, violation_matrices, usage_matrix)
+        net_scores, net_violations = self.score_routing(initial_routing, placed_layout, usage_matrix)
         num_violations = sum(sum(net_violations.itervalues(), []))
         iterations = 0
 
@@ -356,7 +327,7 @@ class Router:
             routing = routing
 
             # Re-score this net
-            net_scores, net_violations = self.score_routing(routing, net_segments, placed_layout, net_pins, violation_matrices, usage_matrix)
+            net_scores, net_violations = self.score_routing(routing, placed_layout, usage_matrix)
             num_violations = sum(sum(net_violations.itervalues(), []))
             iterations += 1
 
