@@ -205,6 +205,16 @@ class Router:
                 routings[net_name].append(net)
         return routings
 
+    def generate_violation_matrices(self, routing, net_segments, net_pins, layout_dimensions):
+        violations = defaultdict(list)
+        for net_name, nets in routing.iteritems():
+            pins = net_pins[net_name]
+            for net in nets:
+                _, v = self.net_to_wire_and_violation(net, layout_dimensions, pins)
+                violations[net_name].append(v)
+
+        return violations
+
     def generate_net_matrices(self, routing, net_segments, net_pins, layout_dimensions):
         """
         For the nets specified by routing, create:
@@ -225,7 +235,18 @@ class Router:
 
         return net_wires, net_violations
 
-    def score_routing(self, routing, net_segments, layout, net_pins):
+    def generate_usage_matrix(self, placed_layout, routing, exclude=[]):
+        usage_matrix = np.copy(placed_layout)
+        for net_name, wires in routing.iteritems():
+            for i, wire in enumerate(wires):
+                if (net_name, i) in exclude:
+                    continue
+                for coord in wire:
+                    usage_matrix[coord] = 1
+
+        return usage_matrix
+
+    def score_routing(self, routing, net_segments, layout, net_pins, violation_matrices, usage_matrix):
         """
         For the given layout, and the routing, produce the score of the
         routing.
@@ -241,16 +262,6 @@ class Router:
         beta = 0.1
         gamma = 1
 
-        usage_matrix = np.copy(layout)
-
-        net_wires, net_violations = self.generate_net_matrices(routing, net_segments, net_pins, layout.shape)
-
-        # Add the wires to the usage matrix
-        for net_name, wires in routing.iteritems():
-            for wire in wires:
-                for coord in wire:
-                    usage_matrix[coord] = 1
-
         net_scores = {}
         net_num_violations = {}
 
@@ -259,21 +270,21 @@ class Router:
             net_scores[net_name] = []
             net_num_violations[net_name] = []
 
-            for i, net in enumerate(net_segments[net_name]):
+            for i, pins in enumerate(net_segments[net_name]):
                 routed_net = routing[net_name][i]
 
                 # Violations
-                violation_matrix = net_violations[net_name][i]
+                violation_matrix = violation_matrices[net_name][i]
                 violations = self.compute_net_violations(violation_matrix, usage_matrix)
                 net_num_violations[net_name].append(violations)
 
                 # Number of vias and pins
                 vias = 0
-                pins = 2
-                pins_vias = vias - pins
+                num_pins = 2
+                pins_vias = vias - num_pins
 
                 # Lower length bound
-                lower_length_bound = max(1, cityblock(net[0], net[1]))
+                lower_length_bound = max(1, cityblock(pins[0], pins[1]))
                 length_ratio = len(routed_net) / lower_length_bound
 
                 score = (alpha * violations) + (beta * pins_vias) + (gamma * length_ratio)
@@ -320,8 +331,11 @@ class Router:
         re_route() produces new routings until there are no more net
         violations that cause the routing to be infeasible.
         """
+        violation_matrices = self.generate_violation_matrices(initial_routing, net_segments, net_pins, placed_layout.shape)
+        usage_matrix = self.generate_usage_matrix(placed_layout, initial_routing)
+
         # Score the initial routing
-        net_scores, net_violations = self.score_routing(initial_routing, net_segments, placed_layout, net_pins)
+        net_scores, net_violations = self.score_routing(initial_routing, net_segments, placed_layout, net_pins, violation_matrices, usage_matrix)
         num_violations = sum(sum(net_violations.itervalues(), []))
         iterations = 0
 
@@ -342,7 +356,7 @@ class Router:
             routing = routing
 
             # Re-score this net
-            net_scores, net_violations = self.score_routing(routing, net_segments, placed_layout, net_pins)
+            net_scores, net_violations = self.score_routing(routing, net_segments, placed_layout, net_pins, violation_matrices, usage_matrix)
             num_violations = sum(sum(net_violations.itervalues(), []))
             iterations += 1
 

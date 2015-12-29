@@ -87,6 +87,7 @@ Doing Routing...
     #     print()
 
     routing = router.initial_routing(net_segments, placements)
+
     # print(routing)
 
     for nets in routing.itervalues():
