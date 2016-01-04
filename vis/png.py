@@ -34,13 +34,15 @@ def random_color():
     b = random.randint(0, 255)
     return "#{:02x}{:02x}{:02x}".format(r, g, b)
 
-def nets_to_png(layout, nets, filename_base="nets", layers=None):
+def nets_to_png(layout, routing, filename_base="nets", layers=None):
     img = layout_to_composite(layout, layers)
     draw = ImageDraw.Draw(img)
 
-    for name, net in nets.iteritems():
+    for name, net in routing.iteritems():
         color = random_color()
-        for u, v in net:
+        for segment in net["segments"]:
+            u, v = segment["pins"]
+
             (_, uz, ux), (_, vz, vx) = u, v
             x1 = (ux * 16) + 8
             y1 = (uz * 16) + 8
@@ -95,7 +97,8 @@ coords = {"stone": (20, 9),
           "unpowered_repeater": (19, 5),
           "powered_repeater": (19, 6),
           "unpowered_comparator": (1, 6),
-          "powered_comparator": (2, 6)
+          "powered_comparator": (2, 6),
+          "planks": (16, 4)
          }
 
 lut = {"air": blank}

@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import heapq
 from copy import deepcopy
 from collections import defaultdict
 import random
@@ -156,7 +157,10 @@ class Router:
             if coord not in pins:
                 for vy in [0, -1]:
                     for vz, vx in violation_directions:
-                        violation[y + vy, z + vz, x + vx] = True
+                        try:
+                            violation[y + vy, z + vz, x + vx] = True
+                        except IndexError:
+                            pass
 
         # Remove "wire" from the violation matrix so that it doesn't
         # violate itself
@@ -298,6 +302,119 @@ class Router:
 
         return rip_up
 
+    def maze_route(self, a, b, placed_layout, usage_matrix):
+        """
+        Given two pins to re-route, find the best path using Lee's maze
+        routing algorithm.
+        """
+        cost_matrix = np.full_like(placed_layout, -1, dtype=np.int)
+        backtrace_matrix = np.zeros_like(cost_matrix, dtype=np.int)
+
+        def in_bounds(coord, layout_dimensions):
+            y, z, x = coord
+            height, width, length = layout_dimensions
+            if 0 <= y < height and 0 <= z < width and 0 <= x < length:
+                return True
+            return False
+
+        def violating(coord):
+            if coord in [a, b]:
+                return False
+
+            violation_directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+            for dy in [0, -1]:
+                for dz, dx in violation_directions:
+                    y, z, x = coord
+                    new_coord = (y + dy, z + dz, x + dx)
+                    if not in_bounds(new_coord, placed_layout.shape):
+                        continue
+
+                    if new_coord in [a, b]:
+                        continue
+
+                    if usage_matrix[new_coord]:
+                        return True
+
+            return False
+
+        # Possible list of movements
+        EAST = 1
+        MOVE_EAST = (0, 0, 1)
+        NORTH = 2
+        MOVE_NORTH = (0, 1, 0)
+        WEST = 3
+        MOVE_WEST = (0, 0, -1)
+        SOUTH = 4
+        MOVE_SOUTH = (0, -1, 0)
+        UP = 5
+        MOVE_UP = (3, 0, 0)
+        DOWN = 6
+        MOVE_DOWN = (-3, 0, 0)
+
+        # Backtrace is the way you go from the start.
+        movements = [MOVE_EAST, MOVE_NORTH, MOVE_WEST, MOVE_SOUTH, MOVE_UP, MOVE_DOWN]
+        backtraces = [WEST, SOUTH, EAST, NORTH, DOWN, UP]
+        costs = [1, 1, 1, 1, 3, 3]
+
+        violation_cost = 1000
+
+        # Start breadth-first with a
+        visited = set()
+        min_dist_heap = []
+        cost_matrix[a] = 0
+        heapq.heappush(min_dist_heap, (0, a))
+        visited_size = len(visited)
+
+        while len(min_dist_heap) > 0:
+            # print("{} -> {}".format(len(to_visit), len(visited)))
+            _, location = heapq.heappop(min_dist_heap)
+            visited.add(location)
+
+            # For each candidate movement
+            for movement, backtrace, movement_cost in zip(movements, backtraces, costs):
+                dy, dz, dx = movement
+                y, z, x = location
+                new_location = (y + dy, z + dz, x + dx)
+
+                if not in_bounds(new_location, placed_layout.shape):
+                    continue
+
+                if new_location in visited:
+                    continue
+
+                if violating(new_location):
+                    new_location_cost = cost_matrix[location] + violation_cost
+                else:
+                    new_location_cost = cost_matrix[location] + movement_cost
+
+                # print(location, cost_matrix[location], "->", new_location, cost_matrix[new_location], new_location_cost)
+                if cost_matrix[new_location] == -1 or new_location_cost < cost_matrix[new_location]:
+                    cost_matrix[new_location] = new_location_cost
+                    backtrace_matrix[new_location] = backtrace
+
+                if new_location not in [entry[1] for entry in min_dist_heap]:
+                    heapq.heappush(min_dist_heap, (new_location_cost, new_location))
+
+
+        # Backtrace, if a path found
+        backtrace_movements = [MOVE_WEST, MOVE_SOUTH, MOVE_EAST, MOVE_NORTH, MOVE_DOWN, MOVE_UP]
+        if b in visited:
+            net = [b]
+            while net[-1] != a:
+                movement = backtrace_movements[backtraces.index(backtrace_matrix[net[-1]])]
+                dy, dz, dx = movement
+                y, z, x = net[-1]
+                back_location = (y + dy, z + dz, x + dx)
+                net.append(back_location)
+
+            print("Net score:", cost_matrix[b], " Length:", len(net))
+            return net
+        else:
+            print("No path between {} and {} found!".format(a, b))
+            # print(cost_matrix[1])
+            # print(backtrace_matrix[1])
+            return None
+
     def re_route(self, initial_routing, placed_layout):
         """
         re_route() produces new routings until there are no more net
@@ -321,10 +438,21 @@ class Router:
             # Select nets to rip-up and re-route
             rip_up = self.natural_selection(normalized_scores)
 
-            print("Re-routing", len(rip_up), "nets")
-
             # Re-route these nets
-            routing = routing
+            usage_matrix = self.generate_usage_matrix(placed_layout, routing, exclude=rip_up)
+
+            print("Re-routing", len(rip_up), "nets")
+            for net_name, i in rip_up:
+                a, b = routing[net_name]["segments"][i]["pins"]
+                new_net = self.maze_route(a, b, placed_layout, usage_matrix)
+                routing[net_name]["segments"][i]["net"] = new_net
+
+                w, v = self.net_to_wire_and_violation(new_net, placed_layout.shape, [a, b])
+                routing[net_name]["segments"][i]["wire"] = w
+                routing[net_name]["segments"][i]["violation"] = v
+
+                # Re-add this net to the usage matrix
+                usage_matrix = np.logical_or(usage_matrix, w)
 
             # Re-score this net
             net_scores, net_violations = self.score_routing(routing, placed_layout, usage_matrix)
@@ -333,3 +461,21 @@ class Router:
 
         return routing
 
+    def extract(self, routing, placed_layout):
+        """
+        Place the wires and vias specified by routing.
+        """
+        routed_layout = np.copy(placed_layout)
+        for net_name, d in routing.iteritems():
+            for segment in d["segments"]:
+                for y, z, x in segment["net"]:
+                    # Place redstone
+                    routed_layout[y, z, x] = 55
+
+                    # Place material underneath
+                    if y == 4:
+                        routed_layout[y-1, z, x] = 5
+                    elif y == 1:
+                        routed_layout[y-1, z, x] = 1
+
+        return routed_layout

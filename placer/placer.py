@@ -331,11 +331,13 @@ class Placer:
 
         return best_placements
 
-    def placement_to_layout(self, dimensions, placements):
+    def placement_to_layout(self, dimensions, placements, min_y=5):
         """
         Returns a (y, z, x) -> blockid dict.
         """
-        layout = np.zeros(dimensions, dtype=np.int8)
+        height, width, length = dimensions
+        height = min(min_y, height)
+        layout = np.zeros((height, width, length), dtype=np.int8)
 
         for placement in placements:
             # Do the cell lookup

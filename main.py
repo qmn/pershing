@@ -76,8 +76,6 @@ Doing Routing...
 
     router = router.Router(blif, pregenerated_cells)
 
-    net_pins = router.extract_pin_locations(placements)
-
     # for net, segments in net_segments.iteritems():
     #     print("{}:".format(net))
     #     for segment in segments:
@@ -88,16 +86,20 @@ Doing Routing...
 
     # print(routing)
 
-    for d in routing.itervalues():
-        for segment in d["segments"]:
-            for y, z, x in segment["net"]:
-                layout[y, z, x] = 55
-                layout[y-1, z, x] = 1
+    # for d in routing.itervalues():
+    #     for segment in d["segments"]:
+    #         for y, z, x in segment["net"]:
+    #             layout[y, z, x] = 55
+    #             layout[y-1, z, x] = 1
 
     routing = router.re_route(routing, layout)
+
+    routed_layout = router.extract(routing, layout)
 
     # VISUALIZE =========================================================
     print("""
 Doing Visualization...
 -------------------""")
-    png.nets_to_png(layout, net_segments)
+    # png.nets_to_png(layout, routing)
+    png.layout_to_composite(routed_layout).save("layout.png")
+    print("Image written to layout.png")
