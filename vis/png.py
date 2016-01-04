@@ -69,7 +69,15 @@ def layer_to_img(layout, y):
         for x in xrange(layout.shape[2]):
             img_x = x * 16
             img_y = z * 16
-            tile = blockid2texture(layout[y, z, x])
+            blockid = layout[y, z, x]
+            block_name = blocks.block_names[blockid]
+
+            # handle redstone differently
+            if block_name in ["redstone_wire"]:
+                tile = extract_redstone_texture((y, z, x), layout)
+            else:
+                tile = lut[block_name]
+
             img.paste(tile, (img_x, img_y))
 
     return img
@@ -82,7 +90,91 @@ def extract_texture(coord):
     top = y * 16
     bottom = (y + 1) * 16
 
-    return textures.crop((left, top, right, bottom))
+    img = textures.crop((left, top, right, bottom))
+    return img
+
+NORTH = 0
+WEST = 1
+SOUTH = 2
+EAST = 3
+
+def extract_redstone_texture(coord, layout):
+    """
+    Generate the image corresponding to the redstone wire at coord, based
+    on what's at the adjacent locations that can transmit redstone
+    signals.
+    """
+    connect_directions = [NORTH, WEST, SOUTH, EAST]
+    dzdx = [(-1, 0), (0, -1), (1, 0), (0, 1)]
+
+    def conducts(coord, rel_locations):
+        y, z, x = coord
+        for rl in rel_locations:
+            dy, dz, dx = rl
+            try:
+                if layout[y + dy, z + dz, x + dx] in conductivity_list:
+                    return True
+            except IndexError:
+                pass
+        return False
+
+    # follows as north, west, south, east
+    connected = [False, False, False, False]
+
+    for i, (dz, dx) in enumerate(dzdx):
+        rels = [(-1, dz, dx), (0, dz, dx), (1, dz, dx)]
+        connected[i] = connected[i] or conducts(coord, rels)
+
+    key = tuple([direction for yes, direction in zip(connected, connect_directions) if yes])
+
+    return redstone_lut[key]
+
+def create_redstone_textures():
+    redstone_cross_alpha = extract_texture((18, 11)).convert(mode="L")
+    redstone_cross = Image.new("RGB", size=(16, 16), color=(127, 0, 0))
+    redstone_cross.putalpha(redstone_cross_alpha)
+
+    redstone_line_alpha = extract_texture((18, 13)).convert(mode="L")
+    redstone_line = Image.new("RGB", size=(16, 16), color=(127, 0, 0))
+    redstone_line.putalpha(redstone_line_alpha)
+    redstone_line = redstone_line.rotate(90)
+
+    # Creates a T (with tee down) from the cross
+    redstone_t = redstone_cross.copy()
+    redstone_t_draw = ImageDraw.Draw(redstone_t)
+    redstone_t_draw.rectangle([(0, 0), (15, 4)], fill=(0, 0, 0, 0), outline=(0, 0, 0, 0))
+    del redstone_t_draw
+
+    # Create an elbow with east, south directions
+    redstone_elbow = redstone_t.copy()
+    redstone_elbow_draw = ImageDraw.Draw(redstone_elbow)
+    redstone_elbow_draw.rectangle([(0, 0), (4, 15)], fill=(0, 0, 0, 0), outline=(0, 0, 0, 0))
+    del redstone_elbow_draw
+
+    redstone_east_west_line = redstone_line.rotate(90)
+
+    textures = {(NORTH, WEST, SOUTH, EAST): redstone_cross,
+
+                (NORTH, SOUTH): redstone_line,
+                (WEST, EAST): redstone_east_west_line,
+
+                (WEST, SOUTH, EAST): redstone_t,
+                (NORTH, SOUTH, EAST): redstone_t.rotate(90),
+                (NORTH, WEST, EAST): redstone_t.rotate(180),
+                (NORTH, WEST, SOUTH): redstone_t.rotate(270),
+
+                (SOUTH, EAST): redstone_elbow,
+                (NORTH, EAST): redstone_elbow.rotate(90),
+                (NORTH, WEST): redstone_elbow.rotate(180),
+                (WEST, SOUTH): redstone_elbow.rotate(270),
+
+                (NORTH,): redstone_line,
+                (WEST,): redstone_east_west_line,
+                (SOUTH,): redstone_line,
+                (EAST,): redstone_east_west_line
+                }
+
+    return textures
 
 # Load in the textures and build the lookup table
 texture_path = "/Users/qmn/Library/Application Support/minecraft/textures_0.png"
@@ -91,8 +183,8 @@ textures = Image.open(open(texture_path))
 blank = Image.new("RGBA", (16, 16))
 
 coords = {"stone": (20, 9),
-          "redstone_wire": (18, 11),
           "redstone_torch": (19, 3),
+          # "redstone_wire": (18, 11),
           "unlit_redstone_torch": (19, 2),
           "unpowered_repeater": (19, 5),
           "powered_repeater": (19, 6),
@@ -105,3 +197,7 @@ lut = {"air": blank}
 for name, coord in coords.iteritems():
     lut[name] = extract_texture(coord)
 
+conductivity_list_names = ["redstone_wire", "redstone_torch", "unlit_redstone_torch", "powered_repeater", "unpowered_repeater", "unpowered_comparator", "powered_comparator"]
+conductivity_list = [blocks.block_names.index(n) for n in conductivity_list_names]
+
+redstone_lut = create_redstone_textures()

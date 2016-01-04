@@ -26,7 +26,7 @@ if __name__ == "__main__":
     with open("lib/quan.yaml") as f:
         cell_lib = cell_library.load(f)
 
-    with open("counter.blif") as f:
+    with open("and.blif") as f:
         blif = blif.load(f)
 
     pregenerated_cells = cell_library.pregenerate_cells(cell_lib, pad=1)
@@ -93,6 +93,8 @@ Doing Routing...
     #             layout[y-1, z, x] = 1
 
     routing = router.re_route(routing, layout)
+
+    print("Routed", len(routing), "nets")
 
     routed_layout = router.extract(routing, layout)
 
