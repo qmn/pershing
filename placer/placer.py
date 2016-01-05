@@ -40,7 +40,7 @@ class Placer(object):
           ...
         ]
         """
-        spacing = 1
+        spacing = 5
 
         # Get the subcircuits from the BLIF
         blif_cells = self.blif.cells
@@ -469,16 +469,17 @@ class GridPlacer(Placer):
             if method == "displace":
                 scaling_factor = log(T) / log(T_0)
 
-                window_half_height = max(2, round(self.interval * 5 * scaling_factor))
-                window_half_width = max(2, round(self.interval * 5 * scaling_factor))
+                window_half_dim = max(1, round(10 * scaling_factor))
 
                 old_y, window_center_z, window_center_x = cellA["placement"]
 
                 # Select new X and Z from window
-                new_x = random.randint(window_center_x - window_half_width, window_center_x + window_half_width)
-                new_z = random.randint(window_center_z - window_half_height, window_center_z + window_half_height)
+                dx = random.randint(-window_half_dim, window_half_dim) * self.interval
+                dz = random.randint(-window_half_dim, window_half_dim) * self.interval
 
-                new_coord = [old_y, new_z, new_x]
+                y, z, x = cellA["placement"]
+
+                new_coord = [old_y, z + dz, x + dx]
                 
                 cellA["placement"] = self.snap_to_grid(new_coord)
                 method_used = "displace"

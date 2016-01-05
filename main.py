@@ -11,6 +11,11 @@ from placer import placer
 from router import router
 from vis import png
 
+def underline_print(s):
+    print()
+    print(s)
+    print("-" * len(s))
+
 if __name__ == "__main__":
     placements = None
     dimensions = None
@@ -35,9 +40,7 @@ if __name__ == "__main__":
 
     # PLACE =============================================================
     if placements is None:
-        print("""
-Performing Initial Placement...
--------------------------------""")
+        underline_print("Performing Initial Placement...")
 
         placements, dimensions = placer.initial_placement()
 
@@ -45,9 +48,7 @@ Performing Initial Placement...
 
         print("Initial Placement Penalty:", score)
 
-        print("""
-Doing Placement...
-------------------""")
+        underline_print("Doing Placement...")
 
         T_0 = 250
         iterations = 2000
@@ -59,17 +60,14 @@ Doing Placement...
             f.write("\n")
             json.dump(dimensions, f)
 
-        placements, dimensions = placer.shrink(placements)
+        placements, dimensions = placer.shrink(new_placements)
         layout = placer.placement_to_layout(dimensions, placements)
         png.layout_to_png(layout)
-
-        placements = new_placements
+        print("Dimensions:", dimensions)
 
 
     # ROUTE =============================================================
-    print("""
-Doing Routing...
-----------------""")
+    underline_print("Doing Routing...")
 
     placements, dimensions = placer.shrink(placements)
     layout = placer.placement_to_layout(dimensions, placements)
@@ -99,9 +97,7 @@ Doing Routing...
     routed_layout = router.extract(routing, layout)
 
     # VISUALIZE =========================================================
-    print("""
-Doing Visualization...
--------------------""")
+    underline_print("Doing Visualization...")
 
     # Get the pins
     net_pins = placer.locate_pins(placements)
