@@ -423,18 +423,18 @@ class GridPlacer(Placer):
     It takes an extra parameter, grid_spacing, to determine the spacing
     between adjacent cell rows and columns.
     """
-    def __init__(self, blif, pregenerated_cells, grid_spacing=0):
+
+    def __init__(self, blif, pregenerated_cells, grid_spacing=1):
         super(GridPlacer, self).__init__(blif, pregenerated_cells)
         self.grid_spacing = grid_spacing
         self.grid_width = self.compute_max_cell_dimension()
-        print("Interval =", self.grid_spacing + self.grid_width)
+        self.interval = self.grid_spacing + self.grid_width
 
     def snap_to_grid(self, coord):
         y, z, x = coord
-        interval = self.grid_spacing + self.grid_width
-        nz = int(round(z / interval) * interval)
-        nx = int(round(x / interval) * interval)
-        return (y, z, x)
+        nz = int(round(z / self.interval) * self.interval)
+        nx = int(round(x / self.interval) * self.interval)
+        return (y, nz, nx)
 
     def generate(self, old_placements, T, T_0, dimensions, method="displace", displace_interchange_ratio=5):
         """
@@ -469,11 +469,8 @@ class GridPlacer(Placer):
             if method == "displace":
                 scaling_factor = log(T) / log(T_0)
 
-                window_half_height = max(2, np.round(dimensions[1] * scaling_factor))
-                window_half_width = max(2, np.round(dimensions[2] * scaling_factor))
-
-                # print("Window width:", window_half_width * 2)
-                # print("Window height:", window_half_height * 2)
+                window_half_height = max(2, round(self.interval * 5 * scaling_factor))
+                window_half_width = max(2, round(self.interval * 5 * scaling_factor))
 
                 old_y, window_center_z, window_center_x = cellA["placement"]
 

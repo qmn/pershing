@@ -26,12 +26,12 @@ if __name__ == "__main__":
     with open("lib/quan.yaml") as f:
         cell_lib = cell_library.load(f)
 
-    with open("and.blif") as f:
+    with open("counter.blif") as f:
         blif = blif.load(f)
 
     pregenerated_cells = cell_library.pregenerate_cells(cell_lib, pad=1)
 
-    placer = placer.GridPlacer(blif, pregenerated_cells, 5)
+    placer = placer.GridPlacer(blif, pregenerated_cells, grid_spacing=5)
 
     # PLACE =============================================================
     if placements is None:

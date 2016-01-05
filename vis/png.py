@@ -177,6 +177,11 @@ def create_redstone_textures():
     redstone_elbow_draw.rectangle([(0, 0), (4, 15)], fill=(0, 0, 0, 0), outline=(0, 0, 0, 0))
     del redstone_elbow_draw
 
+    redstone_dot = redstone_elbow.copy()
+    redstone_dot_draw = ImageDraw.Draw(redstone_dot)
+    redstone_dot_draw.rectangle([(12,0), (12, 15)], fill=(0, 0, 0, 0), outline=(0, 0, 0, 0))
+    redstone_dot_draw.rectangle([(0,12), (0, 15)], fill=(0, 0, 0, 0), outline=(0, 0, 0, 0))
+
     redstone_east_west_line = redstone_line.rotate(90)
 
     textures = {(NORTH, WEST, SOUTH, EAST): redstone_cross,
@@ -197,7 +202,9 @@ def create_redstone_textures():
                 (NORTH,): redstone_line,
                 (WEST,): redstone_east_west_line,
                 (SOUTH,): redstone_line,
-                (EAST,): redstone_east_west_line
+                (EAST,): redstone_east_west_line,
+
+                (): redstone_dot
                 }
 
     return textures

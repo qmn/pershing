@@ -429,35 +429,39 @@ class Router:
 
         routing = deepcopy(initial_routing)
 
-        while num_violations > 0:
-            print("Iteration:", iterations, " Violations:", num_violations)
+        try:
+            while num_violations > 0:
+                print("Iteration:", iterations, " Violations:", num_violations)
 
-            # Normalize net scores
-            normalized_scores = self.normalize_net_scores(net_scores)
+                # Normalize net scores
+                normalized_scores = self.normalize_net_scores(net_scores)
 
-            # Select nets to rip-up and re-route
-            rip_up = self.natural_selection(normalized_scores)
+                # Select nets to rip-up and re-route
+                rip_up = self.natural_selection(normalized_scores)
 
-            # Re-route these nets
-            usage_matrix = self.generate_usage_matrix(placed_layout, routing, exclude=rip_up)
+                # Re-route these nets
+                usage_matrix = self.generate_usage_matrix(placed_layout, routing, exclude=rip_up)
 
-            print("Re-routing", len(rip_up), "nets")
-            for net_name, i in rip_up:
-                a, b = routing[net_name]["segments"][i]["pins"]
-                new_net = self.maze_route(a, b, placed_layout, usage_matrix)
-                routing[net_name]["segments"][i]["net"] = new_net
+                print("Re-routing", len(rip_up), "nets")
+                for net_name, i in rip_up:
+                    a, b = routing[net_name]["segments"][i]["pins"]
+                    new_net = self.maze_route(a, b, placed_layout, usage_matrix)
+                    routing[net_name]["segments"][i]["net"] = new_net
 
-                w, v = self.net_to_wire_and_violation(new_net, placed_layout.shape, [a, b])
-                routing[net_name]["segments"][i]["wire"] = w
-                routing[net_name]["segments"][i]["violation"] = v
+                    w, v = self.net_to_wire_and_violation(new_net, placed_layout.shape, [a, b])
+                    routing[net_name]["segments"][i]["wire"] = w
+                    routing[net_name]["segments"][i]["violation"] = v
 
-                # Re-add this net to the usage matrix
-                usage_matrix = np.logical_or(usage_matrix, w)
+                    # Re-add this net to the usage matrix
+                    usage_matrix = np.logical_or(usage_matrix, w)
 
-            # Re-score this net
-            net_scores, net_violations = self.score_routing(routing, placed_layout, usage_matrix)
-            num_violations = sum(sum(net_violations.itervalues(), []))
-            iterations += 1
+                # Re-score this net
+                net_scores, net_violations = self.score_routing(routing, placed_layout, usage_matrix)
+                num_violations = sum(sum(net_violations.itervalues(), []))
+                iterations += 1
+                print()
+        except KeyboardInterrupt:
+            pass
 
         return routing
 
