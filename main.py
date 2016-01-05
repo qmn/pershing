@@ -102,6 +102,13 @@ Doing Routing...
     print("""
 Doing Visualization...
 -------------------""")
+
+    # Get the pins
+    net_pins = placer.locate_pins(placements)
+    pins = {}
+    for pin in blif.inputs + blif.outputs:
+        pins[pin] = net_pins[pin]
+
     # png.nets_to_png(layout, routing)
-    png.layout_to_composite(routed_layout).save("layout.png")
+    png.layout_to_composite(routed_layout, pins=pins).save("layout.png")
     print("Image written to layout.png")

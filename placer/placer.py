@@ -85,6 +85,26 @@ class Placer:
 
         return placements, dimensions
 
+    def locate_pins(self, placements):
+        net_pins = defaultdict(list)
+        for blif_cell, placement in zip(self.blif.cells, placements):
+            # Do the cell lookup
+            rotation = placement["turns"]
+            cell_name = placement["name"]
+            cell = self.pregenerated_cells[cell_name][rotation]
+
+            yy, zz, xx = placement["placement"]
+            height, width, length = cell.blocks.shape
+
+            # Add the pins
+            for pin, d in cell.ports.iteritems():
+                (y, z, x) = d["coordinates"]
+                coord = (y + yy, z + zz, x + xx)
+                net_name = placement["pins"][pin]
+                net_pins[net_name].append(coord)
+
+        return net_pins
+
     def estimate_lengths_and_occupieds(self, placements):
         net_pins = defaultdict(list)
         grid = defaultdict(int)

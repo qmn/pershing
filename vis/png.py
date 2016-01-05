@@ -2,15 +2,42 @@ from __future__ import print_function
 
 import random
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 from util import blocks
+
+font = ImageFont.load_default()
+
+NORTH = 0
+WEST = 1
+SOUTH = 2
+EAST = 3
 
 def blockid2texture(blockid):
     block_name = blocks.block_names[blockid]
     return lut[block_name]
 
-def layout_to_composite(layout, layers=None):
+def pins_to_image(layout_dimensions, pins):
+    width = layout_dimensions[2] * 16
+    height = layout_dimensions[1] * 16
+    img = Image.new("RGBA", size=(width, height), color=(0, 0, 0, 0))
+
+    draw = ImageDraw.Draw(img)
+    for name, locations in pins.iteritems():
+        for location in locations:
+            _, z, x = location
+            z *= 16
+            x *= 16
+            # draw "shadow"
+            draw.text((x+1, z+1), name, font=font, fill=(200, 200, 200, 255))
+            # draw actual text
+            draw.text((x, z), name, font=font, fill=(0, 0, 0, 255))
+
+    del draw
+
+    return img
+
+def layout_to_composite(layout, layers=None, pins=None):
     img = None
     
     if layers is None:
@@ -25,6 +52,10 @@ def layout_to_composite(layout, layers=None):
             img = new_img
         else:
             img.paste(new_img, mask=new_img)
+
+    if pins is not None:
+        pin_img = pins_to_image(layout.shape, pins)
+        img.paste(pin_img, mask=pin_img)
 
     return img
 
@@ -92,11 +123,6 @@ def extract_texture(coord):
 
     img = textures.crop((left, top, right, bottom))
     return img
-
-NORTH = 0
-WEST = 1
-SOUTH = 2
-EAST = 3
 
 def extract_redstone_texture(coord, layout):
     """
