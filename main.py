@@ -31,7 +31,7 @@ if __name__ == "__main__":
 
     pregenerated_cells = cell_library.pregenerate_cells(cell_lib, pad=1)
 
-    placer = placer.Placer(blif, pregenerated_cells)
+    placer = placer.GridPlacer(blif, pregenerated_cells, 5)
 
     # PLACE =============================================================
     if placements is None:

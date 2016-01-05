@@ -10,10 +10,19 @@ from math import exp, log, sqrt, ceil
 
 from vis import png
 
-class Placer:
+class Placer(object):
     def __init__(self, blif, pregenerated_cells):
         self.blif = blif
         self.pregenerated_cells = pregenerated_cells
+
+    def compute_max_cell_dimension(self):
+        # Estimate the width by taking the maximum of X or Z of all cells
+        # used in the layout
+        cells = [a[0] for a in self.pregenerated_cells.itervalues()]
+        max_cell_widths = [max(cell.blocks.shape[1], cell.blocks.shape[2]) for cell in cells]
+        max_cell_width = max(max_cell_widths)
+
+        return max_cell_width
 
     def initial_placement(self, dimensions=None):
         """
@@ -45,14 +54,10 @@ class Placer:
 
         max_height = max(cell.blocks.shape[0] for cell in cells)
 
-        # Estimate the width by taking the maximum of X or Z of all cells
-        # used in the layout
-        max_cell_widths = [max(cell.blocks.shape[1], cell.blocks.shape[2]) for cell in cells]
-
-        max_cell_width = max(max_cell_widths)
+        max_cell_width = self.compute_max_cell_dimension()
 
         # Add up the longest dimension, plus one for each cell
-        width_estimate = sum(max_cell_widths) + (len(max_cell_widths) * spacing)
+        width_estimate = (len(cells) * (max_cell_width + spacing))
 
         if dimensions is None:
             dimensions = (max_height, width_estimate, width_estimate)
@@ -410,3 +415,83 @@ class Placer:
 
         return placements, [dy, dz, dx]
 
+class GridPlacer(Placer):
+    """
+    GridPlacer generates placements aligned on a grid with each location
+    enough to fit the largest standard library cell.
+
+    It takes an extra parameter, grid_spacing, to determine the spacing
+    between adjacent cell rows and columns.
+    """
+    def __init__(self, blif, pregenerated_cells, grid_spacing=0):
+        super(GridPlacer, self).__init__(blif, pregenerated_cells)
+        self.grid_spacing = grid_spacing
+        self.grid_width = self.compute_max_cell_dimension()
+        print("Interval =", self.grid_spacing + self.grid_width)
+
+    def snap_to_grid(self, coord):
+        y, z, x = coord
+        interval = self.grid_spacing + self.grid_width
+        nz = int(round(z / interval) * interval)
+        nx = int(round(x / interval) * interval)
+        return (y, z, x)
+
+    def generate(self, old_placements, T, T_0, dimensions, method="displace", displace_interchange_ratio=5):
+        """
+        Given an old placement, generate a new placement by either switching
+        the location of two cells or displacing a cell or rotating it.
+
+        T is the current temperature; T_0 is the starting temperature. This
+        is used to scale the window for displacing a cell.
+
+        method can be "displace" or "reorient".
+
+        displace_interchange_ratio is the ratio of how often you displace
+        a cell and how often you interchange it with another cell.
+        """
+        new_placements = deepcopy(old_placements)
+
+        # Select a random cell to interchange, displace, or orient
+        cellA = random.choice(new_placements)
+
+        method_used = ""
+
+        interchange = random.random() > (1. / displace_interchange_ratio)
+        if interchange:
+            cellB = cellA
+            while cellB is cellA:
+                cellB = random.choice(new_placements)
+
+            # print("Interchanging {} (at {}) with {} (at {})".format(cellA["name"], cellA["placement"], cellB["name"], cellB["placement"]))
+            cellA["placement"], cellB["placement"] = cellB["placement"], cellA["placement"]
+            method_used = "interchange"
+        else: # displace or reorient
+            if method == "displace":
+                scaling_factor = log(T) / log(T_0)
+
+                window_half_height = max(2, np.round(dimensions[1] * scaling_factor))
+                window_half_width = max(2, np.round(dimensions[2] * scaling_factor))
+
+                # print("Window width:", window_half_width * 2)
+                # print("Window height:", window_half_height * 2)
+
+                old_y, window_center_z, window_center_x = cellA["placement"]
+
+                # Select new X and Z from window
+                new_x = random.randint(window_center_x - window_half_width, window_center_x + window_half_width)
+                new_z = random.randint(window_center_z - window_half_height, window_center_z + window_half_height)
+
+                new_coord = [old_y, new_z, new_x]
+                
+                cellA["placement"] = self.snap_to_grid(new_coord)
+                method_used = "displace"
+
+            elif method == "reorient":
+                # Rotate 90 degrees
+                cellA["turns"] = (cellA["turns"] + 1) % 4
+                method_used = "reorient"
+
+            else:
+                raise ValueError("Method must be 'displace' or 'reorient'")
+
+        return new_placements, method_used
