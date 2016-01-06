@@ -487,7 +487,7 @@ class Router:
         import json
         routing = json.loads(f.readline())
         shape = json.loads(f.readline())
-        for net_name, net in routing:
+        for net_name, net in routing.iteritems():
             for i, segment in enumerate(net["segments"]):
                 a, b = segment["pins"]
                 n = segment["net"]

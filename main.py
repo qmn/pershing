@@ -19,6 +19,7 @@ def underline_print(s):
 if __name__ == "__main__":
     placements = None
     dimensions = None
+    routing = None
 
     # Load placements, if provided
     if len(sys.argv) >= 2:
@@ -27,6 +28,7 @@ if __name__ == "__main__":
         with open(placements_file) as f:
             placements = json.loads(f.readline())
             dimensions = json.loads(f.readline())
+
 
     with open("lib/quan.yaml") as f:
         cell_lib = cell_library.load(f)
@@ -75,14 +77,23 @@ if __name__ == "__main__":
     layout = placer.placement_to_layout(dimensions, placements)
 
     router = router.Router(blif, pregenerated_cells)
-    routing = router.initial_routing(placements, layout.shape)
-    routing = router.re_route(routing, layout)
 
-    # Preserve routing
-    with open("routing.json", "w") as f:
-        router.serialize_routing(routing, dimensions, f)
+    # Load routings, if provided
+    if len(sys.argv) >= 3:
+        routings_file = sys.argv[2]
+        print("Using routings file:", routings_file)
+        with open(routings_file) as f:
+            routing = router.deserialize_routing(f)
 
-    print("Routed", len(routing), "nets")
+    if routing is None:
+        routing = router.initial_routing(placements, layout.shape)
+        routing = router.re_route(routing, layout)
+
+        # Preserve routing
+        with open("routing.json", "w") as f:
+            router.serialize_routing(routing, dimensions, f)
+
+        print("Routed", len(routing), "nets")
 
     routed_layout = router.extract(routing, layout)
 
