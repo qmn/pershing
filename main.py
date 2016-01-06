@@ -54,13 +54,15 @@ if __name__ == "__main__":
         iterations = 2000
         new_placements = placer.simulated_annealing_placement(placements, dimensions, T_0, iterations)
 
-        print(new_placements)
+        placements, dimensions = placer.shrink(new_placements)
+
+        # print(new_placements)
+        print("Placed", len(new_placements), "cells")
         with open("placements.json", "w") as f:
             json.dump(new_placements, f)
             f.write("\n")
             json.dump(dimensions, f)
 
-        placements, dimensions = placer.shrink(new_placements)
         layout = placer.placement_to_layout(dimensions, placements)
         png.layout_to_png(layout)
         print("Dimensions:", dimensions)
@@ -73,24 +75,12 @@ if __name__ == "__main__":
     layout = placer.placement_to_layout(dimensions, placements)
 
     router = router.Router(blif, pregenerated_cells)
-
-    # for net, segments in net_segments.iteritems():
-    #     print("{}:".format(net))
-    #     for segment in segments:
-    #         print("  " + str(list(segment)))
-    #     print()
-
     routing = router.initial_routing(placements, layout.shape)
-
-    # print(routing)
-
-    # for d in routing.itervalues():
-    #     for segment in d["segments"]:
-    #         for y, z, x in segment["net"]:
-    #             layout[y, z, x] = 55
-    #             layout[y-1, z, x] = 1
-
     routing = router.re_route(routing, layout)
+
+    # Preserve routing
+    with open("routing.json", "w") as f:
+        router.serialize_routing(routing, dimensions, f)
 
     print("Routed", len(routing), "nets")
 

@@ -174,7 +174,8 @@ class Router:
         """
         For each non-zero entry, see if there is anything in "occupieds".
         """
-        return sum(np.logical_and(violation, occupieds).flat)
+        violations = np.logical_and(violation, occupieds)
+        return sum(violations.flat)
 
     def initial_routing(self, placements, layout_dimensions):
         """
@@ -462,6 +463,37 @@ class Router:
                 print()
         except KeyboardInterrupt:
             pass
+
+        return routing
+
+    def serialize_routing(self, original_routing, shape, f):
+        """
+        Return the routing without the wire or the violation matrices
+        (which can't be serialized as-is and takes too much space
+        anyway).
+        """
+        import json
+        routing = deepcopy(original_routing)
+        for net_name, net in routing.iteritems():
+            for i, segment in enumerate(net["segments"]):
+                del segment["violation"]
+                del segment["wire"]
+
+        json.dump(routing, f)
+        f.write("\n")
+        json.dump(shape, f)
+
+    def deserialize_routing(self, f):
+        import json
+        routing = json.loads(f.readline())
+        shape = json.loads(f.readline())
+        for net_name, net in routing:
+            for i, segment in enumerate(net["segments"]):
+                a, b = segment["pins"]
+                n = segment["net"]
+                w, v = self.net_to_wire_and_violation(n, shape, [a, b])
+                segment["wire" ] = w
+                segment["violation"] = v
 
         return routing
 
