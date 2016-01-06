@@ -443,7 +443,7 @@ class Router:
                 usage_matrix = self.generate_usage_matrix(placed_layout, routing, exclude=rip_up)
 
                 print("Re-routing", len(rip_up), "nets")
-                for net_name, i in rip_up:
+                for net_name, i in sorted(rip_up, key=lambda x: normalized_scores[x[0]][x[1]], reverse=True):
                     a, b = routing[net_name]["segments"][i]["pins"]
                     new_net = self.maze_route(a, b, placed_layout, usage_matrix)
                     routing[net_name]["segments"][i]["net"] = new_net
