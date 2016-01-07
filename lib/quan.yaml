@@ -4,6 +4,26 @@
 library_name: quan
 
 cells:
+  input_pin:
+    pins:
+      Y:
+        direction: output
+        facing: east
+        coordinates: [0, 0, 1]
+
+    blocks: [[[69, 55]]]
+    data:   [[[ 0,  0]]]
+
+  output_pin:
+    pins:
+      A:
+        direction: input
+        facing: west
+        coordinates: [0, 0, 0]
+
+    blocks: [[[55, 123]]]
+    data:   [[[ 0,   0]]]
+
   AND:
     pins:
       A:

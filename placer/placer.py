@@ -90,9 +90,12 @@ class Placer(object):
 
         return placements, dimensions
 
-    def locate_pins(self, placements):
+    def locate_pins(self, placements, filter=None):
         net_pins = defaultdict(list)
-        for blif_cell, placement in zip(self.blif.cells, placements):
+        for placement in placements:
+            if filter is not None and not filter(placement):
+                continue
+
             # Do the cell lookup
             rotation = placement["turns"]
             cell_name = placement["name"]
@@ -109,6 +112,10 @@ class Placer(object):
                 net_pins[net_name].append(coord)
 
         return net_pins
+
+    def locate_circuit_pins(self, placements):
+        f = lambda x: x["name"] in ["input_pin", "output_pin"]
+        return self.locate_pins(placements, f)
 
     def estimate_lengths_and_occupieds(self, placements):
         net_pins = defaultdict(list)
@@ -414,6 +421,51 @@ class Placer(object):
             placement["placement"] = [y - min_y, z - min_z, x - min_x]
 
         return placements, [dy, dz, dx]
+
+    def place_pins(self, dimensions):
+        """
+        Place pins around the west and east rims of the circuit.
+        """
+        def create_input_pin(net, coord):
+            input_pin = {"pins": {"Y": net},
+                         "turns": 0,
+                         "placement": coord,
+                         "name": "input_pin"}
+            return input_pin
+
+        def create_output_pin(net, coord):
+            output_pin = {"pins": {"A": net},
+                         "turns": 0,
+                         "placement": coord,
+                         "name": "output_pin"}
+            return output_pin
+
+        input_nets = self.blif.inputs
+        output_nets = self.blif.outputs
+
+        margin = 5
+        pin_spacing = 5
+
+        y = 0
+        z = 0
+
+        pin_placements = []
+
+        # place input pins
+        x = -margin
+        for i, input_net_name in enumerate(input_nets):
+            coord = [y, z + (pin_spacing * i), x]
+            pin_placements.append(create_input_pin(input_net_name, coord))
+
+        # place output pins
+        x = dimensions[2] + margin
+        for i, output_net_name in enumerate(output_nets):
+            coord = [y, z + (pin_spacing * i), x]
+            pin_placements.append(create_output_pin(output_net_name, coord))
+
+        print(pin_placements)
+
+        return pin_placements
 
 class GridPlacer(Placer):
     """

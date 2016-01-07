@@ -19,7 +19,7 @@ class Router:
         net_pins = defaultdict(list)
 
         # For each wire, locate its pins according to the placement
-        for blif_cell, placement in zip(self.blif.cells, placements):
+        for placement in placements:
             # Do the cell lookup
             rotation = placement["turns"]
             cell_name = placement["name"]

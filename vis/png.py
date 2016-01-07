@@ -218,12 +218,14 @@ blank = Image.new("RGBA", (16, 16))
 coords = {"stone": (20, 9),
           "redstone_torch": (19, 3),
           # "redstone_wire": (18, 11),
+          "redstone_lamp": (18, 15),
           "unlit_redstone_torch": (19, 2),
           "unpowered_repeater": (19, 5),
           "powered_repeater": (19, 6),
           "unpowered_comparator": (1, 6),
           "powered_comparator": (2, 6),
-          "planks": (16, 4)
+          "planks": (16, 4),
+          "lever": (10, 13)
          }
 
 lut = {"air": blank}

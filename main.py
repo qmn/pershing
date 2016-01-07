@@ -33,7 +33,7 @@ if __name__ == "__main__":
     with open("lib/quan.yaml") as f:
         cell_lib = cell_library.load(f)
 
-    with open("counter.blif") as f:
+    with open("and.blif") as f:
         blif = blif.load(f)
 
     pregenerated_cells = cell_library.pregenerate_cells(cell_lib, pad=1)
@@ -52,11 +52,16 @@ if __name__ == "__main__":
 
         underline_print("Doing Placement...")
 
+        # Place cells
         T_0 = 250
         iterations = 2000
         new_placements = placer.simulated_annealing_placement(placements, dimensions, T_0, iterations)
 
         placements, dimensions = placer.shrink(new_placements)
+
+        # Place pins and resize
+        placements += placer.place_pins(dimensions)
+        placements, dimensions = placer.shrink(placements)
 
         # print(new_placements)
         print("Placed", len(new_placements), "cells")
@@ -101,10 +106,7 @@ if __name__ == "__main__":
     underline_print("Doing Visualization...")
 
     # Get the pins
-    net_pins = placer.locate_pins(placements)
-    pins = {}
-    for pin in blif.inputs + blif.outputs:
-        pins[pin] = net_pins[pin]
+    pins = placer.locate_circuit_pins(placements)
 
     # png.nets_to_png(layout, routing)
     png.layout_to_composite(routed_layout, pins=pins).save("layout.png")
