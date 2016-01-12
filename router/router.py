@@ -15,7 +15,7 @@ class Router:
         self.blif = blif
         self.pregenerated_cells = pregenerated_cells
 
-    def extract_pin_locations(self, placements):
+    def extract_extended_pin_locations(self, placements):
         net_pins = defaultdict(list)
 
         # For each wire, locate its pins according to the placement
@@ -31,10 +31,29 @@ class Router:
                 (y, z, x) = d["coordinates"]
                 facing = d["facing"]
                 coord = (y + yy, z + zz, x + xx)
+                extended_coord = self.extend_pin(coord, facing)
                 net_name = placement["pins"][pin]
-                net_pins[net_name].append(coord)
+                net_pins[net_name].append(extended_coord)
 
         return net_pins
+
+    def extend_pin(self, coord, facing):
+        """
+        Returns the coordinates of the pin based moving in the
+        direction given by "facing".
+        """
+        (y, z, x) = coord
+
+        if facing == "north":
+            z -= 1
+        elif facing == "west":
+            x -= 1
+        elif facing == "south":
+            z += 1
+        elif facing == "east":
+            x += 1
+
+        return (y, z, x)
         
     def create_net_segments(self, pin_locations):
 
@@ -80,23 +99,6 @@ class Router:
 
             return A
 
-        def extend_pin(coord, facing):
-            """
-            Returns the coordinates of the pin based moving in the
-            direction given by "facing".
-            """
-            (y, z, x) = coord
-
-            if facing == "north":
-                z -= 1
-            elif facing == "west":
-                x -= 1
-            elif facing == "south":
-                z += 1
-            elif facing == "east":
-                x += 1
-
-            return (y, z, x)
 
         net_segments = {}
         for net, pin_list in pin_locations.iteritems():
@@ -196,7 +198,7 @@ class Router:
         """
         routings = {}
 
-        pin_locations = self.extract_pin_locations(placements)
+        pin_locations = self.extract_extended_pin_locations(placements)
         net_segments = self.create_net_segments(pin_locations)
 
         for net_name, segment_endpoints in net_segments.iteritems():
