@@ -123,21 +123,63 @@ class Router:
 
             return A
 
+        def dag_from_output_mst(graph_connections, pin_list):
+            """
+            Perform a depth-first search from the locations marked output
+            so that all tuples are ordered so that the driver comes first
+            and the driven pin comes second.
+            """
+            # Each MST has n nodes and n-1 edges.
+            drivers = set()
+
+            for u, v in graph_connections:
+                uio = pin_list[u]["is_output"]
+                vio = pin_list[v]["is_output"]
+
+                if uio:
+                    drivers.add(u)
+                if vio:
+                    drivers.add(v)
+
+            dag = []
+            # Assemble the DAG
+            seen = [False] * len(graph_connections)
+            while not all(seen):
+                for i, (u, v) in enumerate(graph_connections):
+                    if seen[i]:
+                        continue
+
+                    # If one of the endpoints of the segment appears in
+                    # drivers, then now the other end is driven, and is
+                    # therefore a driver.
+                    if u in drivers:
+                        dag.append((u, v))
+                        drivers.add(v)
+                        seen[i] = True
+                    elif v in drivers:
+                        dag.append((v, u))
+                        drivers.add(u)
+                        seen[i] = True
+
+            assert len(dag) == len(graph_connections)
+
+            dag = [(pin_list[u], pin_list[v]) for (u, v) in dag]
+            return dag
 
         net_segments = {}
         for net, pin_list in pin_locations.iteritems():
             if len(pin_list) < 2:
                 continue
 
-            def metric(u ,v):
+            # Define the metric on the pin list
+            def metric(u, v):
                 coord_u = pin_list[u]["route_coord"]
                 coord_v = pin_list[v]["route_coord"]
                 return cityblock(coord_u, coord_v)
 
             graph_connections = minimum_spanning_tree(len(pin_list), metric)
-
-            segments = [(pin_list[u], pin_list[v]) for (u, v) in graph_connections]
-            net_segments[net] = segments
+            dag = dag_from_output_mst(graph_connections, pin_list)
+            net_segments[net] = dag
 
         return net_segments
 
