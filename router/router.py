@@ -16,10 +16,42 @@ class Router:
         self.pregenerated_cells = pregenerated_cells
 
     def extract_extended_pin_locations(self, placements):
+        """
+        Returns a dictionary keyed on net names, with arrays of
+        dictionaries:
+        { net_name: [ { "cell_index": i,
+                        "pin": s,
+                        "route_coord": (y, z, x),
+                        "is_output": True/False
+                      }
+                      ...
+                    ]
+          ...
+        }
+        """
+
+        def extend_pin(coord, facing):
+            """
+            Returns the coordinates of the pin based moving in the
+            direction given by "facing".
+            """
+            (y, z, x) = coord
+
+            if facing == "north":
+                z -= 1
+            elif facing == "west":
+                x -= 1
+            elif facing == "south":
+                z += 1
+            elif facing == "east":
+                x += 1
+
+            return (y, z, x)
+
         net_pins = defaultdict(list)
 
         # For each wire, locate its pins according to the placement
-        for placement in placements:
+        for i, placement in enumerate(placements):
             # Do the cell lookup
             rotation = placement["turns"]
             cell_name = placement["name"]
@@ -30,55 +62,47 @@ class Router:
             for pin, d in cell.ports.iteritems():
                 (y, z, x) = d["coordinates"]
                 facing = d["facing"]
+                is_output = (d["direction"] == "output")
                 coord = (y + yy, z + zz, x + xx)
-                extended_coord = self.extend_pin(coord, facing)
+                extended_coord = extend_pin(coord, facing)
                 net_name = placement["pins"][pin]
-                net_pins[net_name].append(extended_coord)
+
+                net_pin_info = {"cell_index": i,
+                                "pin": pin,
+                                "route_coord": extended_coord,
+                                "is_output": is_output}
+                net_pins[net_name].append(net_pin_info)
 
         return net_pins
 
-    def extend_pin(self, coord, facing):
-        """
-        Returns the coordinates of the pin based moving in the
-        direction given by "facing".
-        """
-        (y, z, x) = coord
-
-        if facing == "north":
-            z -= 1
-        elif facing == "west":
-            x -= 1
-        elif facing == "south":
-            z += 1
-        elif facing == "east":
-            x += 1
-
-        return (y, z, x)
-        
     def create_net_segments(self, pin_locations):
 
-        def minimum_spanning_tree(net_pins):
+        def minimum_spanning_tree(size, distance_metric):
             """
-            For a given set of (y, z, x) coordinates given by net_pins, compute
-            the segments that form the minimum spanning tree, using Kruskal's
-            algorithm.
+            Compute the segments that form the minimum spanning tree,
+            using Kruskal's algorithm.
+
+            The input is the size of the graph, and the tree is organized
+            as a list of elements, with no gaps. (To be precise,
+            distance_metric(u, v) must be defined for all u, v in [0, size).)
+
+            distance_metric(u, v) is the function that computes the distance
+            between the nodes indexed u and v.
+
+            The output is a list of (i, j) pairs specifying the MST.
             """
 
             # Create sets for each of the pins
             sets = []
-            for pin in net_pins:
-                s = set([pin])
+            for i in xrange(size):
+                s = set([i])
                 sets.append(s)
 
             # Compute the weight matrix
             weights = {}
-            for pin in net_pins:
-                for pin2 in net_pins:
-                    if pin == pin2:
-                        continue
-                    # Weight each pin distance based on the Manhattan
-                    # distance.
-                    weights[(pin, pin2)] = cityblock(pin, pin2)
+            for i in xrange(size):
+                for j in xrange(i+1, size):
+                    weights[(i, j)] = distance_metric(i, j)
 
             def find_set(u):
                 for i, s in enumerate(sets):
@@ -104,7 +128,16 @@ class Router:
         for net, pin_list in pin_locations.iteritems():
             if len(pin_list) < 2:
                 continue
-            net_segments[net] = minimum_spanning_tree(pin_list)
+
+            def metric(u ,v):
+                coord_u = pin_list[u]["route_coord"]
+                coord_v = pin_list[v]["route_coord"]
+                return cityblock(coord_u, coord_v)
+
+            graph_connections = minimum_spanning_tree(len(pin_list), metric)
+
+            segments = [(pin_list[u], pin_list[v]) for (u, v) in graph_connections]
+            net_segments[net] = segments
 
         return net_segments
 
@@ -204,8 +237,10 @@ class Router:
         for net_name, segment_endpoints in net_segments.iteritems():
             segments = []
             for a, b in segment_endpoints:
-                net = self.dumb_route(a, b)
-                w, v = self.net_to_wire_and_violation(net, layout_dimensions, [a, b])
+                coord_a = a["route_coord"]
+                coord_b = b["route_coord"]
+                net = self.dumb_route(coord_a, coord_b)
+                w, v = self.net_to_wire_and_violation(net, layout_dimensions, [coord_a, coord_b])
                 segment = {"pins": [a, b], "net": net, "wire": w, "violation": v}
                 segments.append(segment)
 
@@ -263,7 +298,9 @@ class Router:
                 pins_vias = vias - num_pins
 
                 # Lower length bound
-                lower_length_bound = max(1, cityblock(segment["pins"][0], segment["pins"][1]))
+                coord_a = segment["pins"][0]["route_coord"]
+                coord_b = segment["pins"][1]["route_coord"]
+                lower_length_bound = max(1, cityblock(coord_a, coord_b))
                 length_ratio = len(routed_net) / lower_length_bound
 
                 score = (alpha * violations) + (beta * pins_vias) + (gamma * length_ratio)
@@ -447,7 +484,8 @@ class Router:
 
                 print("Re-routing", len(rip_up), "nets")
                 for net_name, i in sorted(rip_up, key=lambda x: normalized_scores[x[0]][x[1]], reverse=True):
-                    a, b = routing[net_name]["segments"][i]["pins"]
+                    pin_info_a, pin_info_b = routing[net_name]["segments"][i]["pins"]
+                    a, b = pin_info_a["route_coord"], pin_info_b["route_coord"]
                     new_net = self.maze_route(a, b, placed_layout, usage_matrix)
                     routing[net_name]["segments"][i]["net"] = new_net
 
