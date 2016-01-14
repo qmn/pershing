@@ -10,6 +10,7 @@ cells:
         direction: output
         facing: east
         coordinates: [0, 0, 1]
+        level: 15
 
     blocks: [[[69, 55]]]
     data:   [[[ 0,  0]]]
@@ -20,6 +21,7 @@ cells:
         direction: input
         facing: west
         coordinates: [0, 0, 0]
+        level: 1
 
     blocks: [[[55, 123]]]
     data:   [[[ 0,   0]]]

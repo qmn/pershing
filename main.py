@@ -8,7 +8,7 @@ import numpy as np
 
 from util import blif, cell, cell_library
 from placer import placer
-from router import router
+from router import router, extractor
 from vis import png
 
 def underline_print(s):
@@ -100,7 +100,13 @@ if __name__ == "__main__":
 
         print("Routed", len(routing), "nets")
 
-    routed_layout = router.extract(routing, layout)
+    # EXTRACT ===========================================================
+    underline_print("Doing Extraction...")
+    extractor = extractor.Extractor(blif, pregenerated_cells)
+
+    extracted_layout = extractor.extract(routing, layout)
+
+    quit()
 
     # VISUALIZE =========================================================
     underline_print("Doing Visualization...")

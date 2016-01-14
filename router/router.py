@@ -21,6 +21,7 @@ class Router:
         dictionaries:
         { net_name: [ { "cell_index": i,
                         "pin": s,
+                        "pin_coord": (y, z, x),
                         "route_coord": (y, z, x),
                         "is_output": True/False
                       }
@@ -28,6 +29,9 @@ class Router:
                     ]
           ...
         }
+
+        pin_coord is the location of the actual pin, but route_coord is
+        where a router should start from.
         """
 
         def extend_pin(coord, facing):
@@ -69,6 +73,7 @@ class Router:
 
                 net_pin_info = {"cell_index": i,
                                 "pin": pin,
+                                "pin_coord": coord,
                                 "route_coord": extended_coord,
                                 "is_output": is_output}
                 net_pins[net_name].append(net_pin_info)
@@ -490,7 +495,7 @@ class Router:
                 net.append(back_location)
 
             print("Net score:", cost_matrix[b], " Length:", len(net))
-            return net
+            return reversed(net)
         else:
             print("No path between {} and {} found!".format(a, b))
             # print(cost_matrix[1])
@@ -527,7 +532,8 @@ class Router:
                 print("Re-routing", len(rip_up), "nets")
                 for net_name, i in sorted(rip_up, key=lambda x: normalized_scores[x[0]][x[1]], reverse=True):
                     pin_info_a, pin_info_b = routing[net_name]["segments"][i]["pins"]
-                    a, b = pin_info_a["route_coord"], pin_info_b["route_coord"]
+                    a = pin_info_a["route_coord"]
+                    b = pin_info_b["route_coord"]
                     new_net = self.maze_route(a, b, placed_layout, usage_matrix)
                     routing[net_name]["segments"][i]["net"] = new_net
 
@@ -579,21 +585,3 @@ class Router:
 
         return routing
 
-    def extract(self, routing, placed_layout):
-        """
-        Place the wires and vias specified by routing.
-        """
-        routed_layout = np.copy(placed_layout)
-        for net_name, d in routing.iteritems():
-            for segment in d["segments"]:
-                for y, z, x in segment["net"]:
-                    # Place redstone
-                    routed_layout[y, z, x] = 55
-
-                    # Place material underneath
-                    if y == 4:
-                        routed_layout[y-1, z, x] = 5
-                    elif y == 1:
-                        routed_layout[y-1, z, x] = 1
-
-        return routed_layout
