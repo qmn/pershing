@@ -27,37 +27,31 @@ class Extractor:
         actual wire path, inserting repeaters as needed.
         """
 
-        redstone_wire = block_names.index("redstone_wire")
-        repeater = block_names.index("unpowered_repeater")
-
-        # Functions determining which is next
-        def is_up_via(c1, c2):
-            y1, z1, x1 = c1
-            y2, z2, x2 = c2
-            return (z1 == z2) and (x1 == x2) and (y2 - y1 == 3)
-
-        def is_down_via(c1, c2):
-            y1, z1, x1 = c1
-            y2, z2, x2 = c2
-            return (z1 == z2) and (x1 == x2) and (y2 - y1 == -3)
-
-        def is_wire(c1, c2):
-            """
-            It's a wire if it moves in any of the compass directions and
-            the change in Y is no more than one.
-            """
-            y1, z1, x1 = c1
-            y2, z2, x2 = c2
-            return abs(y1 - y2) <= 1 and \
-                ((x1 == x2 and abs(z1 - z2) == 1) or \
-                 (z1 == z2 and abs(x1 - x2) == 1))
-
         def determine_movement(c1, c2):
-            if is_wire(c1, c2):
+            y1, z1, x1 = c1
+            y2, z2, x2 = c2
+
+            # Functions determining which is next
+            def is_up_via():
+                return (z1 == z2) and (x1 == x2) and (y2 - y1 == 3)
+
+            def is_down_via():
+                return (z1 == z2) and (x1 == x2) and (y2 - y1 == -3)
+
+            def is_wire():
+                """
+                It's a wire if it moves in any of the compass directions and
+                the change in Y is no more than one.
+                """
+                return abs(y1 - y2) <= 1 and \
+                    ((x1 == x2 and abs(z1 - z2) == 1) or \
+                     (z1 == z2 and abs(x1 - x2) == 1))
+
+            if is_wire():
                 return Extractor.WIRE
-            elif is_up_via(c1, c2):
+            elif is_up_via():
                 return Extractor.UP_VIA
-            elif is_down_via(c1, c2):
+            elif is_down_via():
                 return Extractor.DOWN_VIA
             else:
                 raise ValueError("Unknown connection between {} and {}".format(c1, c2))
@@ -86,7 +80,7 @@ class Extractor:
 
             return extracted_net
 
-        net_coords = list(reversed(segment["net"]))
+        net_coords = segment["net"]
         inital_extraction = generate_initial_extraction(net_coords)
 
         # Split the extraction, determine redundant pieces (namely, the
@@ -95,7 +89,7 @@ class Extractor:
 
         return zip(item, coords)
 
-    def place_repeaters(self, extracted_net_subsection, coords, start_coord, stop_coord, start_strength=15, min_strength=1):
+    def place_repeaters(self, extracted_net_subsection, coords, start_coord, stop_coord, start_strength=13, min_strength=1):
         """
         Place repeaters along this path until the final location has
         strength min_strength. min_strength must be at least 1.
@@ -146,7 +140,14 @@ class Extractor:
             while repeater_i >= 0:
                 if repeater_i > 0:
                     before = coords[repeater_i - 1]
-                after = coords[repeater_i + 1]
+                else:
+                    before = start_coord
+
+                if repeater_i < len(coords) - 1:
+                    after = coords[repeater_i + 1]
+                else:
+                    print("stop_coord", stop_coord)
+                    after = stop_coord
 
                 if repeatable(before, after):
                     subsection[repeater_i] = Extractor.REPEATER
@@ -190,7 +191,7 @@ class Extractor:
 
                     # Get the coordinates before and after this subsection (for repeaters)
                     before = start_coord if prev == 0 else net_coords[prev - 1]
-                    after = coords
+                    after = net_coords[curr]
 
                     # Place the repeaters
                     repeated_subsection = self.place_repeaters(extracted_net[prev:curr], net_coords[prev:curr], before, after)

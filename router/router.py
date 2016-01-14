@@ -495,7 +495,8 @@ class Router:
                 net.append(back_location)
 
             print("Net score:", cost_matrix[b], " Length:", len(net))
-            return reversed(net)
+            net.reverse()
+            return net
         else:
             print("No path between {} and {} found!".format(a, b))
             # print(cost_matrix[1])

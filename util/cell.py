@@ -53,7 +53,10 @@ class Cell(MaskedSubChunk):
                 nx = width - 1 - z
             new_coordinates = (ny, nz, nx)
 
-            new_ports[pin] = {"coordinates": new_coordinates, "facing": new_facing, "direction": d["direction"]}
+            new_ports[pin] = {"coordinates": new_coordinates,
+                              "facing": new_facing,
+                              "direction": d["direction"],
+                              "level": d["level"]}
 
         new_msc = super(Cell, self).rot90(turns)
         new_blocks = new_msc.blocks
@@ -87,6 +90,10 @@ def from_lib(name, cell, pad=0):
         coord = (y + pad, z + pad, x + pad)
         facing = d["facing"]
         direction = d["direction"]
-        ports[pin] = {"coordinates": coord, "facing": facing, "direction": direction}
+        level = d["level"]
+        ports[pin] = {"coordinates": coord,
+                      "facing": facing,
+                      "direction": direction,
+                      "level": level}
 
     return Cell(blocks, data, mask, name, ports)
