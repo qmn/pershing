@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+from copy import deepcopy
 import numpy as np
 
 from util.blocks import block_names, Piston
@@ -256,12 +257,11 @@ class Extractor:
             else:
                 raise ValueError("Unknown extraction type", extraction_type)
 
-    def extract(self, routing, placed_layout):
+    def extract_routing(self, routing):
         """
         Place the wires and vias specified by routing.
         """
-        print("placed layout dtype:", placed_layout.dtype)
-        extracted_layout = np.copy(placed_layout)
+        routing = deepcopy(routing)
         for net_name, d in routing.iteritems():
             for segment in d["segments"]:
                 endpoints = segment["pins"]
@@ -269,7 +269,17 @@ class Extractor:
                 stop_pin = endpoints[1]["pin_coord"]
 
                 extracted_net = self.extract_net_segment(segment, start_pin, stop_pin)
-                print(extracted_net)
-                self.place_blocks(extracted_net, extracted_layout)
+                segment["extracted_net"] = extracted_net
+
+        return routing
+
+    def extract_layout(self, extracted_routing, placed_layout):
+        """
+        Place the wires and vias specified by routing.
+        """
+        extracted_layout = np.copy(placed_layout)
+        for net_name, d in extracted_routing.iteritems():
+            for segment in d["segments"]:
+                self.place_blocks(segment["extracted_net"], extracted_layout)
 
         return extracted_layout

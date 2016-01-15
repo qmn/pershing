@@ -105,7 +105,8 @@ if __name__ == "__main__":
     underline_print("Doing Extraction...")
     extractor = extractor.Extractor(blif, pregenerated_cells)
 
-    extracted_layout = extractor.extract(routing, layout)
+    extracted_routing = extractor.extract_routing(routing)
+    extracted_layout = extractor.extract_layout(extracted_routing, layout)
 
     with open("extraction.json", "w") as f:
         json.dump(extracted_layout.tolist(), f)
