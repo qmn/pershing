@@ -135,4 +135,13 @@ if __name__ == "__main__":
 
     crit_delay, crit_path = max(path_delays, key=lambda x: x[0])
 
-    print("Critical path delay: {}, maximum frequency: {:.4f} Hz".format(crit_delay, 1./(crit_delay*0.05)))
+    print("Critical path delay: {} ticks".format(crit_delay))
+    print("Minimum period: {:.2f} s".format(crit_delay * 0.05))
+    print("Maximum frequency: {:.4f} Hz".format(1./(crit_delay * 0.05)))
+
+    underline_print("Design Statistics")
+    print("Layout size: {} x {} x {}".format(layout.shape[0], layout.shape[1], layout.shape[2]))
+    print("  Blocks placed: {}".format(sum(layout.flat != 0)))
+    print()
+    print("Total nets: {}".format(len(extracted_routing)))
+    print("  Segments routed: {}".format(sum(len(net["segments"]) for net in extracted_routing.itervalues())))
