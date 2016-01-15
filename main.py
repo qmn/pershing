@@ -8,7 +8,7 @@ import numpy as np
 
 from util import blif, cell, cell_library
 from placer import placer
-from router import router, extractor
+from router import router, extractor, minetime
 from vis import png
 
 def underline_print(s):
@@ -64,9 +64,9 @@ if __name__ == "__main__":
         placements, dimensions = placer.shrink(placements)
 
         # print(new_placements)
-        print("Placed", len(new_placements), "cells")
+        print("Placed", len(placements), "cells")
         with open("placements.json", "w") as f:
-            json.dump(new_placements, f)
+            json.dump(placements, f)
             f.write("\n")
             json.dump(dimensions, f)
 
@@ -121,3 +121,18 @@ if __name__ == "__main__":
     # png.nets_to_png(layout, routing)
     png.layout_to_composite(extracted_layout, pins=pins).save("layout.png")
     print("Image written to layout.png")
+
+    # MINETIME =========================================================
+    underline_print("Doing Timing Analysis...")
+
+    mt = minetime.MineTime()
+    path_delays = mt.compute_combinational_delay(placements, extracted_routing, cell_lib)
+
+    print("Path delays:")
+    for path_delay, path in sorted(path_delays, key=lambda x: x[0], reverse=True):
+        print(path_delay, "  ", " -> ".join(path))
+    print()
+
+    crit_delay, crit_path = max(path_delays, key=lambda x: x[0])
+
+    print("Critical path delay: {}, maximum frequency: {:.4f} Hz".format(crit_delay, 1./(crit_delay*0.05)))

@@ -14,11 +14,12 @@ class Cell(MaskedSubChunk):
     ports is a dict that maps pin names to the (y, z, x) coordinates in
     the blocks matrix.
     """
-    def __init__(self, blocks, data, mask, name, ports):
+    def __init__(self, blocks, data, mask, name, ports, delay):
         super(Cell, self).__init__(blocks, data, mask)
 
         self.name = name
         self.ports = ports
+        self.delay = delay
 
     def rot90(self, turns=1):
         """
@@ -70,12 +71,13 @@ class Cell(MaskedSubChunk):
         # print(new_blocks)
         # print(port_array)
 
-        return Cell(new_blocks, new_data, new_mask, self.name, new_ports)
+        return Cell(new_blocks, new_data, new_mask, self.name, new_ports, self.delay)
 
 def from_lib(name, cell, pad=0):
     blocks = np.asarray(cell["blocks"], dtype=np.uint8)
     data = np.asarray(cell["data"], dtype=np.uint8)
     mask = np.full_like(blocks, True, dtype=np.bool)
+    delay = cell["delay"]
 
     if pad != 0:
         pad_out = (pad,)
@@ -96,4 +98,4 @@ def from_lib(name, cell, pad=0):
                       "direction": direction,
                       "level": level}
 
-    return Cell(blocks, data, mask, name, ports)
+    return Cell(blocks, data, mask, name, ports, delay)

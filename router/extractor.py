@@ -161,7 +161,7 @@ class Extractor:
 
             strengths = compute_strength(subsection)
 
-        print("Placed repeaters:", subsection)
+        # print("Placed repeaters:", subsection)
         return subsection
 
     def split_extraction(self, extracted_net, net_coords, start_coord, stop_coord):
@@ -235,7 +235,6 @@ class Extractor:
 
         # For each of the types, place
         for extraction_type, placement in extracted_net:
-            print(extraction_type, placement)
             y, z, x = placement
             if extraction_type == Extractor.WIRE:
                 layout[y  , z, x] = redstone_wire
@@ -247,7 +246,7 @@ class Extractor:
                 layout[y-1, z, x] = stone
                 layout[y  , z, x] = stone
                 layout[y+1, z, x] = redstone_torch
-                layout[y+2, z, x] = stone
+                layout[y+2, z, x] = planks
                 layout[y+3, z, x] = unlit_redstone_torch
             elif extraction_type == Extractor.DOWN_VIA:
                 layout[y  , z, x] = sticky_piston

@@ -14,6 +14,8 @@ cells:
 
     blocks: [[[69, 55]]]
     data:   [[[ 0,  0]]]
+    delay:
+      combinational: 0
 
   output_pin:
     pins:
@@ -25,6 +27,8 @@ cells:
 
     blocks: [[[55, 123]]]
     data:   [[[ 0,   0]]]
+    delay:
+      combinational: 0
 
   AND:
     pins:
@@ -59,6 +63,8 @@ cells:
               [[0, 5, 0, 0],
                [0, 0, 0, 0],
                [0, 5, 0, 0]]]
+    delay:
+      combinational: 4
 
   XOR:
     pins:
@@ -93,6 +99,9 @@ cells:
               [0,  0,  0,  0,  0,  0],
               [0,  5,  1,  0,  0,  0]]]
 
+    delay:
+      combinational: 4
+
   NAND:
     pins:
       A:
@@ -126,6 +135,9 @@ cells:
               [0,  0,  0],
               [0,  5,  0]]]
 
+    delay:
+      combinational: 6
+
   NOT:
     pins:
       A:
@@ -143,6 +155,9 @@ cells:
     blocks: [[[55, 1, 76, 55]]]
 
     data:   [[[ 0, 0,  1,  0]]]
+
+    delay:
+      combinational: 6
 
   DFF:
     pins:
@@ -177,3 +192,6 @@ cells:
     data:   [[[ 0,  0,  1, 0],
               [ 0,  2,  2, 0],
               [ 0,  1,  1, 0]]]
+
+    delay:
+      combinational: 0
