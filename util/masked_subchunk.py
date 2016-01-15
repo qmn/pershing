@@ -16,8 +16,8 @@ class MaskedSubChunk(object):
     Dimensions are organized (Y, Z, X).
     """
     def __init__(self, blocks, data, mask):
-        blocks = np.asarray(blocks, dtype=np.int8)
-        data = np.asarray(data, dtype=np.int8)
+        blocks = np.asarray(blocks, dtype=np.uint8)
+        data = np.asarray(data, dtype=np.uint8)
         mask = np.asarray(mask, dtype=np.bool)
 
         if blocks.shape != data.shape:

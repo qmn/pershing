@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import numpy as np
 
-from util.blocks import block_names
+from util.blocks import block_names, Piston
 
 class Extractor:
     WIRE = 1
@@ -63,9 +63,9 @@ class Extractor:
         min_input_signal_strength = 1
 
         def generate_initial_extraction(net):
-            print(start_pin)
-            print(net)
-            print(stop_pin)
+            # print(start_pin)
+            # print(net)
+            # print(stop_pin)
 
             # start_pin to 0
             extracted_net = [determine_movement(start_pin, net[0])]
@@ -146,7 +146,6 @@ class Extractor:
                 if repeater_i < len(coords) - 1:
                     after = coords[repeater_i + 1]
                 else:
-                    print("stop_coord", stop_coord)
                     after = stop_coord
 
                 if repeatable(before, after):
@@ -219,11 +218,50 @@ class Extractor:
 
         return sum(result, []), sum(coords, [])
 
+    def place_blocks(self, extracted_net, layout):
+        """
+        Modify layout to have the extracted net.
+        """
+        redstone_wire = block_names.index("redstone_wire")
+        stone = block_names.index("stone")
+        planks = block_names.index("planks")
+        sticky_piston = block_names.index("sticky_piston")
+        unpowered_repeater = block_names.index("unpowered_repeater")
+        redstone_torch = block_names.index("redstone_torch")
+        unlit_redstone_torch = block_names.index("unlit_redstone_torch")
+        redstone_block = block_names.index("redstone_block")
+        air = block_names.index("air")
+
+        # For each of the types, place
+        for extraction_type, placement in extracted_net:
+            print(extraction_type, placement)
+            y, z, x = placement
+            if extraction_type == Extractor.WIRE:
+                layout[y  , z, x] = redstone_wire
+                layout[y-1, z, x] = stone if y == 1 else planks
+            elif extraction_type == Extractor.REPEATER:
+                layout[y  , z, x] = unpowered_repeater
+                layout[y-1, z, x] = stone if y == 1 else planks
+            elif extraction_type == Extractor.UP_VIA:
+                layout[y-1, z, x] = stone
+                layout[y  , z, x] = stone
+                layout[y+1, z, x] = redstone_torch
+                layout[y+2, z, x] = stone
+                layout[y+3, z, x] = unlit_redstone_torch
+            elif extraction_type == Extractor.DOWN_VIA:
+                layout[y  , z, x] = sticky_piston
+                layout[y-1, z, x] = redstone_block
+                layout[y-2, z, x] = air
+                layout[y-3, z, x] = stone
+            else:
+                raise ValueError("Unknown extraction type", extraction_type)
+
     def extract(self, routing, placed_layout):
         """
         Place the wires and vias specified by routing.
         """
-        routed_layout = np.copy(placed_layout)
+        print("placed layout dtype:", placed_layout.dtype)
+        extracted_layout = np.copy(placed_layout)
         for net_name, d in routing.iteritems():
             for segment in d["segments"]:
                 endpoints = segment["pins"]
@@ -232,6 +270,6 @@ class Extractor:
 
                 extracted_net = self.extract_net_segment(segment, start_pin, stop_pin)
                 print(extracted_net)
-            break
+                self.place_blocks(extracted_net, extracted_layout)
 
-        return routed_layout
+        return extracted_layout

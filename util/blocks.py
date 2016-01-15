@@ -287,3 +287,7 @@ class Comparator:
         new_rot = (rot_index + turns) % len(Comparator.rotations)
         new_rot_bits = Comparator.rotations[new_rot] & 0x3
         return (other_bits | rot_bits)
+
+class Piston:
+    DOWN = 0
+    UP = 1

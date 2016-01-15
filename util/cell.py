@@ -73,8 +73,8 @@ class Cell(MaskedSubChunk):
         return Cell(new_blocks, new_data, new_mask, self.name, new_ports)
 
 def from_lib(name, cell, pad=0):
-    blocks = np.asarray(cell["blocks"], dtype=np.int8)
-    data = np.asarray(cell["data"], dtype=np.int8)
+    blocks = np.asarray(cell["blocks"], dtype=np.uint8)
+    data = np.asarray(cell["data"], dtype=np.uint8)
     mask = np.full_like(blocks, True, dtype=np.bool)
 
     if pad != 0:

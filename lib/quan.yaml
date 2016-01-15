@@ -32,16 +32,19 @@ cells:
         direction: input
         facing: west
         coordinates: [0, 0, 0]
+        level: 1
       B:
         direction: input
         facing: west
         coordinates: [0, 2, 0]
+        level: 1
 
       Y:
         direction: output
         facing: east
         coordinates: [0, 1, 3]
         function: "(A*B)"
+        level: 15
 
     blocks: [[[55, 1,  0,  0],
               [ 0, 1, 76, 55],
@@ -63,15 +66,18 @@ cells:
         direction: input
         facing: west
         coordinates: [0, 0, 0]
+        level: 1
       B:
         direction: input
         facing: west
         coordinates: [0, 2, 0]
+        level: 1
       Y:
         direction: output
         facing: east
         coordinates: [0, 1, 5]
         function: "(A^B)"
+        level: 15
 
     blocks: [[[55,  1, 76, 55,  1, 76],
               [ 0,  1,  1, 76,  0, 55],
@@ -93,15 +99,18 @@ cells:
         direction: input
         facing: west
         coordinates: [0, 0, 0]
+        level: 1
       B:
         direction: input
         facing: west
         coordinates: [0, 2, 0]
+        level: 1
       Y:
         direction: output
         facing: east
         coordinates: [0, 1, 2]
         function: "(A*B)'"
+        level: 14
 
     blocks: [[[55,  1,  0],
               [ 0,  1, 55],
@@ -123,11 +132,13 @@ cells:
         direction: input
         facing: west
         coordinates: [0, 0, 0]
+        level: 1
       Y:
         direction: output
         facing: east
         coordinates: [0, 0, 3]
         function: "A'"
+        level: 15
 
     blocks: [[[55, 1, 76, 55]]]
 
@@ -140,15 +151,18 @@ cells:
         facing: west
         coordinates: [0, 0, 0]
         clock: true
+        level: 1
       D:
         direction: input
         facing: west
         coordinates: [0, 2, 0]
+        level: 1
       Q:
         direction: output
         facing: east
         coordinates: [0, 2, 3]
         function: "IQ"
+        level: 15
 
     ff:
       noninverting: "IQ"

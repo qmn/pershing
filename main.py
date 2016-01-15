@@ -70,6 +70,7 @@ if __name__ == "__main__":
             f.write("\n")
             json.dump(dimensions, f)
 
+        # Visualize this layout
         layout = placer.placement_to_layout(dimensions, placements)
         png.layout_to_png(layout)
         print("Dimensions:", dimensions)
@@ -106,7 +107,9 @@ if __name__ == "__main__":
 
     extracted_layout = extractor.extract(routing, layout)
 
-    quit()
+    with open("extraction.json", "w") as f:
+        json.dump(extracted_layout.tolist(), f)
+        print("Wrote extraction to extraction.json")
 
     # VISUALIZE =========================================================
     underline_print("Doing Visualization...")
@@ -115,5 +118,5 @@ if __name__ == "__main__":
     pins = placer.locate_circuit_pins(placements)
 
     # png.nets_to_png(layout, routing)
-    png.layout_to_composite(routed_layout, pins=pins).save("layout.png")
+    png.layout_to_composite(extracted_layout, pins=pins).save("layout.png")
     print("Image written to layout.png")

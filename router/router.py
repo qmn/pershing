@@ -221,7 +221,7 @@ class Router:
 
         The net is the list of where the _redstone_ is.
         """
-        wire = np.zeros(dimensions, dtype=np.int8)
+        wire = np.zeros(dimensions, dtype=np.uint8)
         violation = np.zeros(dimensions, dtype=np.bool)
 
         redstone = block_names.index("redstone_wire")

@@ -369,7 +369,7 @@ class Placer(object):
         """
         height, width, length = dimensions
         height = min(min_y, height)
-        layout = np.zeros((height, width, length), dtype=np.int8)
+        layout = np.zeros((height, width, length), dtype=np.uint8)
 
         for placement in placements:
             # Do the cell lookup

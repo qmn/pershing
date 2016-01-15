@@ -101,6 +101,7 @@ def layer_to_img(layout, y):
             img_x = x * 16
             img_y = z * 16
             blockid = layout[y, z, x]
+            # print(blockid)
             block_name = blocks.block_names[blockid]
 
             # handle redstone differently
@@ -224,6 +225,8 @@ coords = {"stone": (20, 9),
           "powered_repeater": (19, 6),
           "unpowered_comparator": (1, 6),
           "powered_comparator": (2, 6),
+          "sticky_piston": (15, 15),
+          "redstone_block": (18, 10),
           "planks": (16, 4),
           "lever": (10, 13)
          }
