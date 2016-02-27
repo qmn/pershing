@@ -2,3 +2,8 @@
 *.sw*
 *.png
 .DS_Store
+
+*.pdf
+*.json
+*.v
+*.blif
