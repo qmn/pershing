@@ -8,13 +8,15 @@ import numpy as np
 import os.path
 import time
 from math import ceil
-
 import argparse
+
+import nbt
 
 from util import blif, cell, cell_library
 from placer import placer
 from router import router, extractor, minetime
 from vis import png
+from inserter import inserter
 
 def underline_print(s):
     print()
@@ -22,9 +24,6 @@ def underline_print(s):
     print("-" * len(s))
 
 if __name__ == "__main__":
-    start_time = time.time()
-    print("Started", time.strftime("%c", time.localtime(start_time)))
-
     placements = None
     dimensions = None
     routing = None
@@ -36,6 +35,7 @@ if __name__ == "__main__":
     parser.add_argument('--library', metavar="library_file", dest="library_file", default="lib/quan.yaml")
     parser.add_argument('--placements', metavar="placements_file", dest="placements_file", help="Use this placements file rather than creating one. Must be previously generated from the supplied BLIF.")
     parser.add_argument('--routings', metavar="routings_file", dest="routings_file", help="Use this routings file rather than creating one. Must be previously generated from the supplied BLIF and placements JSON.")
+    parser.add_argument('--world', metavar="world_folder", dest="world_folder", help="Place the extracted redstone circuit layout in this world.")
 
     args = parser.parse_args()
 
@@ -75,6 +75,9 @@ if __name__ == "__main__":
     pregenerated_cells = cell_library.pregenerate_cells(cell_lib, pad=1)
 
     placer = placer.GridPlacer(blif, pregenerated_cells, grid_spacing=5)
+
+    start_time = time.time()
+    print("Started", time.strftime("%c", time.localtime(start_time)))
 
     # PLACE =============================================================
     if placements is None:
@@ -159,7 +162,7 @@ if __name__ == "__main__":
     print("Image written to ", png_fn)
 
     # MINETIME =========================================================
-    underline_print("Doing Timing Analysis...")
+    underline_print("Doing Timing Analysis with MineTime...")
 
     mt = minetime.MineTime()
     path_delays = mt.compute_combinational_delay(placements, extracted_routing, cell_lib)
@@ -184,3 +187,9 @@ if __name__ == "__main__":
     print()
     end_time = time.time()
     print("Finished", time.strftime("%c", time.localtime(end_time)), "(took", ceil(end_time - start_time), "s)")
+
+    # INSERTION ========================================================
+    if args.world_folder is not None:
+        underline_print("Inserting Design into Minecraft World...")
+        world = nbt.world.WorldFolder(args.world_folder)
+        inserter.insert_extracted_layout(world, extracted_layout, offset=(4, 0, 0))

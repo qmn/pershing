@@ -252,7 +252,8 @@ class Extractor:
                 layout[y  , z, x] = sticky_piston
                 layout[y-1, z, x] = redstone_block
                 layout[y-2, z, x] = air
-                layout[y-3, z, x] = stone
+                layout[y-3, z, x] = redstone_wire
+                layout[y-4, z, x] = stone
             else:
                 raise ValueError("Unknown extraction type", extraction_type)
 
