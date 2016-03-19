@@ -130,7 +130,9 @@ if __name__ == "__main__":
             routing = router.deserialize_routing(f)
 
     if routing is None:
+        print("Doing initial routing...")
         routing = router.initial_routing(placements, layout.shape)
+        print("done.")
         routing = router.re_route(routing, layout)
 
         # Preserve routing

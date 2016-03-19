@@ -14,6 +14,8 @@ class Router:
     def __init__(self, blif, pregenerated_cells):
         self.blif = blif
         self.pregenerated_cells = pregenerated_cells
+        self.cost_matrix = None
+        self.backtrace_matrix = None
 
     def extract_extended_pin_locations(self, placements):
         """
@@ -208,7 +210,8 @@ class Router:
         start, stop = min(az, bz), max(az, bz) + 1
         for z in xrange(start, stop):
             coord = (ay, z, bx)
-            net.append(coord)
+            if coord not in net:
+                net.append(coord)
 
         return net
 
@@ -394,15 +397,20 @@ class Router:
         Given two pins to re-route, find the best path using Lee's maze
         routing algorithm.
         """
-        cost_matrix = np.full_like(placed_layout, -1, dtype=np.int)
-        backtrace_matrix = np.zeros_like(cost_matrix, dtype=np.int)
+        def clear_matrices():
+            height, width, length = self.cost_matrix.shape
+            for y in xrange(height):
+                for z in xrange(width):
+                    for x in xrange(length):
+                        self.cost_matrix[y, z, x] = -1
+                        self.backtrace_matrix[y, z, x] = 0
 
-        def in_bounds(coord, layout_dimensions):
-            y, z, x = coord
-            height, width, length = layout_dimensions
-            if 0 <= y < height and 0 <= z < width and 0 <= x < length:
-                return True
-            return False
+        # If not created yet, create the cost matrices, otherwise, just zero them out
+        if self.cost_matrix is None or self.backtrace_matrix is None:
+            self.cost_matrix = np.full_like(placed_layout, -1, dtype=np.int)
+            self.backtrace_matrix = np.zeros_like(placed_layout, dtype=np.int)
+        else:
+            clear_matrices()
 
         def violating(coord):
             if coord in [a, b]:
@@ -413,14 +421,13 @@ class Router:
                 for dz, dx in violation_directions:
                     y, z, x = coord
                     new_coord = (y + dy, z + dz, x + dx)
-                    if not in_bounds(new_coord, placed_layout.shape):
-                        continue
-
                     if new_coord in [a, b]:
                         continue
-
-                    if usage_matrix[new_coord]:
-                        return True
+                    try:
+                        if usage_matrix[new_coord]:
+                            return True
+                    except IndexError:
+                        continue
 
             return False
 
@@ -446,16 +453,20 @@ class Router:
         violation_cost = 1000
 
         # Start breadth-first with a
-        visited = set()
+        visited = np.zeros_like(placed_layout, dtype=bool)
+        heap_locations = np.zeros_like(placed_layout, dtype=bool)
         min_dist_heap = []
-        cost_matrix[a] = 0
+        self.cost_matrix[a] = 0
         heapq.heappush(min_dist_heap, (0, a))
-        visited_size = len(visited)
+        heap_locations[a] = 1
+
+        visited_size = sum(visited.flat != 0)
 
         while len(min_dist_heap) > 0:
             # print("{} -> {}".format(len(to_visit), len(visited)))
             _, location = heapq.heappop(min_dist_heap)
-            visited.add(location)
+            heap_locations[location] = 0
+            visited[location] = 1
 
             # For each candidate movement
             for movement, backtrace, movement_cost in zip(movements, backtraces, costs):
@@ -463,42 +474,52 @@ class Router:
                 y, z, x = location
                 new_location = (y + dy, z + dz, x + dx)
 
-                if not in_bounds(new_location, placed_layout.shape):
+                try:
+                    # less-than-zero checks
+                    if y + dy < 0 or z + dz < 0 or x + dx < 0:
+                        continue
+
+                    if visited[new_location] == 1:
+                        continue
+
+                    if violating(new_location):
+                        new_location_cost = self.cost_matrix[location] + violation_cost
+                    else:
+                        new_location_cost = self.cost_matrix[location] + movement_cost
+
+                    # print(location, cost_matrix[location], "->", new_location, cost_matrix[new_location], new_location_cost)
+                    if self.cost_matrix[new_location] == -1 or new_location_cost < self.cost_matrix[new_location]:
+                        self.cost_matrix[new_location] = new_location_cost
+                        self.backtrace_matrix[new_location] = backtrace
+
+                    if heap_locations[new_location] == 0:
+                        heapq.heappush(min_dist_heap, (new_location_cost, new_location))
+                        heap_locations[new_location] = 1
+
+                except IndexError:
                     continue
-
-                if new_location in visited:
-                    continue
-
-                if violating(new_location):
-                    new_location_cost = cost_matrix[location] + violation_cost
-                else:
-                    new_location_cost = cost_matrix[location] + movement_cost
-
-                # print(location, cost_matrix[location], "->", new_location, cost_matrix[new_location], new_location_cost)
-                if cost_matrix[new_location] == -1 or new_location_cost < cost_matrix[new_location]:
-                    cost_matrix[new_location] = new_location_cost
-                    backtrace_matrix[new_location] = backtrace
-
-                if new_location not in [entry[1] for entry in min_dist_heap]:
-                    heapq.heappush(min_dist_heap, (new_location_cost, new_location))
 
 
         # Backtrace, if a path found
         backtrace_movements = [MOVE_WEST, MOVE_SOUTH, MOVE_EAST, MOVE_NORTH, MOVE_DOWN, MOVE_UP]
-        if b in visited:
+        if visited[b] == 1:
             net = [b]
             while net[-1] != a:
-                movement = backtrace_movements[backtraces.index(backtrace_matrix[net[-1]])]
+                last = net[-1]
+                backtrace_entry = self.backtrace_matrix[last]
+                if backtrace_entry == 0 or backtrace_entry > 6:
+                    raise ValueError("Unknown backtrace entry {}".format(backtrace_entry))
+                movement = backtrace_movements[backtraces.index(backtrace_entry)]
                 dy, dz, dx = movement
                 y, z, x = net[-1]
                 back_location = (y + dy, z + dz, x + dx)
                 net.append(back_location)
 
-            print("Net score:", cost_matrix[b], " Length:", len(net))
+            print("Net score:", self.cost_matrix[b], " Length:", len(net))
             net.reverse()
             return net
         else:
-            print("No path between {} and {} found!".format(a, b))
+            raise ValueError("No path between {} and {} found!".format(a, b))
             # print(cost_matrix[1])
             # print(backtrace_matrix[1])
             return None

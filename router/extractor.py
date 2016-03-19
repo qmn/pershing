@@ -55,6 +55,7 @@ class Extractor:
             elif is_down_via():
                 return Extractor.DOWN_VIA
             else:
+                print("Start is {}, stop is {}, segment is {}".format(start_pin, stop_pin, segment["net"]))
                 raise ValueError("Unknown connection between {} and {}".format(c1, c2))
                 return None
 
