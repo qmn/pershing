@@ -112,6 +112,9 @@ class Region:
 
         block_position = (offset_y * 16 * 16) + (offset_z * 16) + offset_x
 
+        if (id > 0xFF):
+            raise ValueError("Block id > 255")
+
         section["Blocks"][block_position] = id
 
     def get_block(self, x, y, z):
@@ -161,23 +164,26 @@ class Region:
 
         section["Data"].value[pos] = data_byte
 
-def place_block(world, y, z, x, i):
+def place_block(world, y, z, x, i, d=0):
     region_x, offset_x = divmod(x, 32*16)
     region_z, offset_z = divmod(z, 32*16)
 
     with Region(world.get_region(region_x, region_z)) as region:
         region.set_block(offset_x, y, offset_z, i)
+        region.set_data(offset_x, y, offset_z, d)
 
 def insert_extracted_layout(world, extracted_layout, offset=(0, 0, 0)):
     """
     Places the extracted layout at offset (y, z, x) in the world.
     """
+
+    blocks, data = extracted_layout
     
-    len_z = extracted_layout.shape[1]
-    len_x = extracted_layout.shape[2]
+    len_z = blocks.shape[1]
+    len_x = blocks.shape[2]
     start_y, start_z, start_x = offset
 
-    height, width, length = extracted_layout.shape
+    height, width, length = blocks.shape
     count = 0
 
     # place base
@@ -188,15 +194,17 @@ def insert_extracted_layout(world, extracted_layout, offset=(0, 0, 0)):
     for yy in xrange(height):
         for zz in xrange(width):
             for xx in xrange(length):
-                block = extracted_layout[yy, zz, xx]
+                block = blocks[yy, zz, xx]
 
                 if block == 0:
                     continue
 
+                datum = data[yy, zz, xx]
+
                 y = start_y + yy
                 z = start_z + zz
                 x = start_x + xx
-                place_block(world, y, z, x, block)
+                place_block(world, y, z, x, block, datum)
                 count += 1
                 msg = "Wrote {} blocks to Minecraft world".format(count)
                 sys.stdout.write("\b" * len(msg))

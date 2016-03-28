@@ -38,6 +38,11 @@ def pins_to_image(layout_dimensions, pins):
     return img
 
 def layout_to_composite(layout, layers=None, pins=None):
+    blocks, data = layout
+
+    # TODO: factor in data
+    layout = blocks
+
     img = None
     
     if layers is None:

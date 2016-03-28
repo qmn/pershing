@@ -3,7 +3,7 @@ from __future__ import print_function
 from copy import deepcopy
 import numpy as np
 
-from util.blocks import block_names, Piston
+from util.blocks import block_names, Piston, Torch, Repeater
 
 class Extractor:
     WIRE = 1
@@ -234,27 +234,51 @@ class Extractor:
         redstone_block = block_names.index("redstone_block")
         air = block_names.index("air")
 
+        blocks, data = layout
+
+        def repeater_facing(z, x, z1, x1):
+            """
+            Given an (x, z) of a repeater and the (x1, z1) of the block
+            before it, compute the direction the repeater faces.
+            """
+            if (z > z1): 
+                return Repeater.SOUTH
+            elif (z < z1):
+                return Repeater.NORTH
+            elif (x > x1):
+                return Repeater.EAST
+            elif (x < x1):
+                return Repeater.WEST
+            else:
+                raise ValueError("Repeater and previous block have same placement")
+
         # For each of the types, place
-        for extraction_type, placement in extracted_net:
+        for i, (extraction_type, placement) in enumerate(extracted_net):
             y, z, x = placement
             if extraction_type == Extractor.WIRE:
-                layout[y  , z, x] = redstone_wire
-                layout[y-1, z, x] = stone if y == 1 else planks
+                blocks[y  , z, x] = redstone_wire
+                blocks[y-1, z, x] = stone if y == 1 else planks
             elif extraction_type == Extractor.REPEATER:
-                layout[y  , z, x] = unpowered_repeater
-                layout[y-1, z, x] = stone if y == 1 else planks
+                blocks[y  , z, x] = unpowered_repeater
+                # determine orientation of repeater
+                _, prev_placement = extracted_net[i-1]
+                _, z1, x1 = prev_placement
+                data[y  , z, x] = repeater_facing(z, x, z1, x1)
+                blocks[y-1, z, x] = stone if y == 1 else planks
             elif extraction_type == Extractor.UP_VIA:
-                layout[y-1, z, x] = stone
-                layout[y  , z, x] = stone
-                layout[y+1, z, x] = redstone_torch
-                layout[y+2, z, x] = planks
-                layout[y+3, z, x] = unlit_redstone_torch
+                blocks[y-1, z, x] = stone
+                blocks[y  , z, x] = stone
+                blocks[y+1, z, x] = redstone_torch
+                data[y+1, z, x] = Torch.UP
+                blocks[y+2, z, x] = planks
+                blocks[y+3, z, x] = unlit_redstone_torch
+                data[y+3, z, x] = Torch.UP
             elif extraction_type == Extractor.DOWN_VIA:
-                layout[y  , z, x] = sticky_piston
-                layout[y-1, z, x] = redstone_block
-                layout[y-2, z, x] = air
-                layout[y-3, z, x] = redstone_wire
-                layout[y-4, z, x] = stone
+                blocks[y  , z, x] = sticky_piston
+                blocks[y-1, z, x] = redstone_block
+                blocks[y-2, z, x] = air
+                blocks[y-3, z, x] = redstone_wire
+                blocks[y-4, z, x] = stone
             else:
                 raise ValueError("Unknown extraction type", extraction_type)
 
@@ -270,7 +294,7 @@ class Extractor:
                 stop_pin = endpoints[1]["pin_coord"]
 
                 extracted_net = self.extract_net_segment(segment, start_pin, stop_pin)
-                segment["extracted_net"] = extracted_net
+                segment["extracted_net"] = [(Extractor.WIRE, start_pin)] + extracted_net + [(Extractor.WIRE, stop_pin)]
 
         return routing
 
@@ -278,7 +302,11 @@ class Extractor:
         """
         Place the wires and vias specified by routing.
         """
-        extracted_layout = np.copy(placed_layout)
+        blocks, data = placed_layout
+        extracted_blocks = np.copy(blocks)
+        extracted_data   = np.copy(data)
+        extracted_layout = (extracted_blocks, extracted_data)
+
         for net_name, d in extracted_routing.iteritems():
             for segment in d["segments"]:
                 self.place_blocks(segment["extracted_net"], extracted_layout)

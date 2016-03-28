@@ -75,6 +75,7 @@ class Cell(MaskedSubChunk):
 
 def from_lib(name, cell, pad=0):
     blocks = np.asarray(cell["blocks"], dtype=np.uint8)
+    _, width, length = blocks.shape
     data = np.asarray(cell["data"], dtype=np.uint8)
     mask = np.full_like(blocks, True, dtype=np.bool)
     delay = cell["delay"]
@@ -84,6 +85,15 @@ def from_lib(name, cell, pad=0):
         blocks = np.pad(blocks, pad_out, "constant")
         data = np.pad(data, pad_out, "constant")
         mask = np.pad(mask, pad_out, "constant")
+
+        # create a padded base immediately below it
+        stone = block_names.index("stone")
+        y = pad-1
+        xs = pad
+        zs = pad
+        xe = xs + length
+        ze = zs + width
+        blocks[y, zs:ze, xs:xe] = stone
 
     # build ports
     ports = {}

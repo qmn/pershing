@@ -8,6 +8,7 @@ from collections import defaultdict
 from copy import deepcopy
 from math import exp, log, sqrt, ceil
 
+from util.blocks import block_names
 from vis import png
 
 class Placer(object):
@@ -365,11 +366,13 @@ class Placer(object):
 
     def placement_to_layout(self, dimensions, placements, min_y=5):
         """
-        Returns a (y, z, x) -> blockid dict.
+        Returns two (height x width x length) matrices containing the block id
+        and data of the given placement.
         """
         height, width, length = dimensions
         height = min(min_y, height)
-        layout = np.zeros((height, width, length), dtype=np.uint8)
+        blocks = np.zeros((height, width, length), dtype=np.uint8)
+        data   = np.zeros((height, width, length), dtype=np.uint8)
 
         for placement in placements:
             # Do the cell lookup
@@ -380,10 +383,11 @@ class Placer(object):
             y, z, x = placement["placement"]
             height, width, length = cell.blocks.shape
 
-            # Paste cell.blocks into the layout
-            layout[y:y+height, z:z+width, x:x+length] = cell.blocks
+            # Paste cell.blocks and cell.data into the layout
+            blocks[y:y+height, z:z+width, x:x+length] = cell.blocks
+            data[y:y+height, z:z+width, x:x+length] = cell.data
 
-        return layout
+        return (blocks, data)
 
     def shrink(self, placements):
         """

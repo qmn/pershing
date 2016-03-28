@@ -130,8 +130,9 @@ if __name__ == "__main__":
             routing = router.deserialize_routing(f)
 
     if routing is None:
+        blocks, data = layout
         print("Doing initial routing...")
-        routing = router.initial_routing(placements, layout.shape)
+        routing = router.initial_routing(placements, blocks.shape)
         print("done.")
         routing = router.re_route(routing, layout)
 
@@ -149,7 +150,9 @@ if __name__ == "__main__":
     extracted_layout = extractor.extract_layout(extracted_routing, layout)
 
     with open(os.path.join(result_dir, "extraction.json"), "w") as f:
-        json.dump(extracted_layout.tolist(), f)
+        blocks, data = extracted_layout
+        json.dump(blocks.tolist(), f)
+        json.dump(data.tolist(), f)
         print("Wrote extraction to extraction.json")
 
     # VISUALIZE =========================================================
@@ -181,8 +184,9 @@ if __name__ == "__main__":
     print("Maximum frequency: {:.4f} Hz".format(1./(crit_delay * 0.05)))
 
     underline_print("Design Statistics")
-    print("Layout size: {} x {} x {}".format(layout.shape[0], layout.shape[1], layout.shape[2]))
-    print("  Blocks placed: {}".format(sum(layout.flat != 0)))
+    blocks, _ = layout
+    print("Layout size: {} x {} x {}".format(blocks.shape[0], blocks.shape[1], blocks.shape[2]))
+    print("  Blocks placed: {}".format(sum(blocks.flat != 0)))
     print()
     print("Total nets: {}".format(len(extracted_routing)))
     print("  Segments routed: {}".format(sum(len(net["segments"]) for net in extracted_routing.itervalues())))

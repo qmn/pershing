@@ -198,20 +198,25 @@ class Router:
         ay, az, ax = a
         by, bz, bx = b
 
-        net = []
+        net = [a]
 
-        # Move horizontally from a to b
-        start, stop = min(ax, bx), max(ax, bx) + 1
-        for x in xrange(start, stop):
-            coord = (ay, az, x)
+        cy, cz, cx = a
+        while cy != by or cz != bz or cx != bx:
+            if cz > bz:
+                cz -= 1
+            elif cz < bz:
+                cz += 1
+            elif cx > bx:
+                cx -= 1
+            elif cx < bx:
+                cx += 1
+            else:
+                raise ValueError("dumb_route cannot route on Y layer")
+
+            coord = (cy, cz, cx)
             net.append(coord)
 
-        # Move vertically from bx to b
-        start, stop = min(az, bz), max(az, bz) + 1
-        for z in xrange(start, stop):
-            coord = (ay, z, bx)
-            if coord not in net:
-                net.append(coord)
+        print("dumb:", net)
 
         return net
 
@@ -300,7 +305,8 @@ class Router:
         return routings
 
     def generate_usage_matrix(self, placed_layout, routing, exclude=[]):
-        usage_matrix = np.copy(placed_layout)
+        blocks, _ = placed_layout
+        usage_matrix = np.copy(blocks)
         for net_name, d in routing.iteritems():
             for i, segment in enumerate(d["segments"]):
                 if (net_name, i) in exclude:
@@ -310,7 +316,7 @@ class Router:
 
         return usage_matrix
 
-    def score_routing(self, routing, layout, usage_matrix):
+    def score_routing(self, routing, usage_matrix):
         """
         For the given layout, and the routing, produce the score of the
         routing.
@@ -397,6 +403,8 @@ class Router:
         Given two pins to re-route, find the best path using Lee's maze
         routing algorithm.
         """
+        blocks, _ = placed_layout
+
         def clear_matrices():
             height, width, length = self.cost_matrix.shape
             for y in xrange(height):
@@ -407,8 +415,8 @@ class Router:
 
         # If not created yet, create the cost matrices, otherwise, just zero them out
         if self.cost_matrix is None or self.backtrace_matrix is None:
-            self.cost_matrix = np.full_like(placed_layout, -1, dtype=np.int)
-            self.backtrace_matrix = np.zeros_like(placed_layout, dtype=np.int)
+            self.cost_matrix = np.full_like(blocks, -1, dtype=np.int)
+            self.backtrace_matrix = np.zeros_like(blocks, dtype=np.int)
         else:
             clear_matrices()
 
@@ -453,8 +461,8 @@ class Router:
         violation_cost = 1000
 
         # Start breadth-first with a
-        visited = np.zeros_like(placed_layout, dtype=bool)
-        heap_locations = np.zeros_like(placed_layout, dtype=bool)
+        visited = np.zeros_like(blocks, dtype=bool)
+        heap_locations = np.zeros_like(blocks, dtype=bool)
         min_dist_heap = []
         self.cost_matrix[a] = 0
         heapq.heappush(min_dist_heap, (0, a))
@@ -532,11 +540,14 @@ class Router:
         usage_matrix = self.generate_usage_matrix(placed_layout, initial_routing)
 
         # Score the initial routing
-        net_scores, net_violations = self.score_routing(initial_routing, placed_layout, usage_matrix)
+        net_scores, net_violations = self.score_routing(initial_routing, usage_matrix)
         num_violations = sum(sum(net_violations.itervalues(), []))
         iterations = 0
 
         routing = deepcopy(initial_routing)
+
+        blocks, _ = placed_layout
+        shape = blocks.shape
 
         try:
             while num_violations > 0:
@@ -559,7 +570,7 @@ class Router:
                     new_net = self.maze_route(a, b, placed_layout, usage_matrix)
                     routing[net_name]["segments"][i]["net"] = new_net
 
-                    w, v = self.net_to_wire_and_violation(new_net, placed_layout.shape, [a, b])
+                    w, v = self.net_to_wire_and_violation(new_net, shape, [a, b])
                     routing[net_name]["segments"][i]["wire"] = w
                     routing[net_name]["segments"][i]["violation"] = v
 
@@ -567,7 +578,7 @@ class Router:
                     usage_matrix = np.logical_or(usage_matrix, w)
 
                 # Re-score this net
-                net_scores, net_violations = self.score_routing(routing, placed_layout, usage_matrix)
+                net_scores, net_violations = self.score_routing(routing, usage_matrix)
                 num_violations = sum(sum(net_violations.itervalues(), []))
                 iterations += 1
                 print()
