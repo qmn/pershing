@@ -216,8 +216,6 @@ class Router:
             coord = (cy, cz, cx)
             net.append(coord)
 
-        print("dumb:", net)
-
         return net
 
     def net_to_wire_and_violation(self, net, dimensions, pins):
