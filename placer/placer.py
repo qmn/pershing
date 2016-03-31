@@ -467,7 +467,7 @@ class Placer(object):
             coord = [y, z + (pin_spacing * i), x]
             pin_placements.append(create_output_pin(output_net_name, coord))
 
-        print(pin_placements)
+        # print("Placed", len(pin_placements), "pins")
 
         return pin_placements
 

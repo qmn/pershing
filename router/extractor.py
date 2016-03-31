@@ -83,11 +83,13 @@ class Extractor:
             return extracted_net
 
         net_coords = segment["net"]
-        inital_extraction = generate_initial_extraction(net_coords)
+        initial_extraction = generate_initial_extraction(net_coords)
+
+        print(zip([None] + initial_extraction, [start_pin] + net_coords + [stop_pin]))
 
         # Split the extraction, determine redundant pieces (namely, the
         # wire-to-via connections), and then insert repeaters as needed.
-        item, coords = self.split_extraction(inital_extraction, net_coords, start_pin, stop_pin)
+        item, coords = self.split_extraction(initial_extraction, net_coords, start_pin, stop_pin)
 
         return zip(item, coords)
 
@@ -183,21 +185,16 @@ class Extractor:
             for candidate_split, replacement in zip(split_on, replacements):
                 chunk_size = len(candidate_split)
                 if extracted_net[curr:curr+chunk_size] == candidate_split:
-                    # If it's empty, just skip it
-                    if prev == curr:
-                        curr += chunk_size
-                        prev = curr
-                        found = True
-                        break
+                    # If it's a non-empty section, place repeaters
+                    if prev != curr:
+                        # Get the coordinates before and after this subsection (for repeaters)
+                        before = start_coord if prev == 0 else net_coords[prev - 1]
+                        after = net_coords[curr]
 
-                    # Get the coordinates before and after this subsection (for repeaters)
-                    before = start_coord if prev == 0 else net_coords[prev - 1]
-                    after = net_coords[curr]
-
-                    # Place the repeaters
-                    repeated_subsection = self.place_repeaters(extracted_net[prev:curr], net_coords[prev:curr], before, after)
-                    result.append(repeated_subsection)
-                    coords.append(net_coords[prev:curr])
+                        # Place the repeaters
+                        repeated_subsection = self.place_repeaters(extracted_net[prev:curr], net_coords[prev:curr], before, after)
+                        result.append(repeated_subsection)
+                        coords.append(net_coords[prev:curr])
 
                     # Place the replacement section (using the coordinate of the first part)
                     result.append(replacement)
@@ -293,8 +290,10 @@ class Extractor:
                 start_pin = endpoints[0]["pin_coord"]
                 stop_pin = endpoints[1]["pin_coord"]
 
+                print(net_name + ":", [start_pin] + segment["net"] + [stop_pin])
                 extracted_net = self.extract_net_segment(segment, start_pin, stop_pin)
                 segment["extracted_net"] = [(Extractor.WIRE, start_pin)] + extracted_net + [(Extractor.WIRE, stop_pin)]
+                print(net_name + ":", segment["extracted_net"])
 
         return routing
 
