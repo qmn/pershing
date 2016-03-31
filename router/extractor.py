@@ -85,8 +85,6 @@ class Extractor:
         net_coords = segment["net"]
         initial_extraction = generate_initial_extraction(net_coords)
 
-        print(zip([None] + initial_extraction, [start_pin] + net_coords + [stop_pin]))
-
         # Split the extraction, determine redundant pieces (namely, the
         # wire-to-via connections), and then insert repeaters as needed.
         item, coords = self.split_extraction(initial_extraction, net_coords, start_pin, stop_pin)
@@ -290,10 +288,8 @@ class Extractor:
                 start_pin = endpoints[0]["pin_coord"]
                 stop_pin = endpoints[1]["pin_coord"]
 
-                print(net_name + ":", [start_pin] + segment["net"] + [stop_pin])
                 extracted_net = self.extract_net_segment(segment, start_pin, stop_pin)
                 segment["extracted_net"] = [(Extractor.WIRE, start_pin)] + extracted_net + [(Extractor.WIRE, stop_pin)]
-                print(net_name + ":", segment["extracted_net"])
 
         return routing
 
