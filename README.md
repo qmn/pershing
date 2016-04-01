@@ -10,11 +10,11 @@ connections needed to produce a functioning circuit in Minecraft.
 			       V
 		       BLIF file (*.blif)
 			       |
-		               |  PERSHING (this repo)
+			       |  PERSHING (this repo)
 			       V
 		 Fully placed-and-routed layout
 			       |
-		               |  inserter.py (this repo too)
+			       |  inserter.py (this repo too)
 			       V
 			   Minecraft
 
